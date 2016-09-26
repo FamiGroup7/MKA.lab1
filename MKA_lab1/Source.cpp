@@ -85,7 +85,7 @@ double relation(double alfa, int n) {
 		alfa = -1 / alfa;
 	return (1 - alfa) / (1 - pow(alfa, n));
 }
-double relation(double alfa, double alfa1) {
+double reverseKoef(double alfa, double alfa1) {
 	if (alfa < 0)
 		alfa = -1 / alfa;
 	return alfa1*alfa;
@@ -168,11 +168,15 @@ void generateArrayOfCells() {
 			else
 			{
 				double otnosh = relation(xDivide[i].koefRazr, xDivide[i].nIntervals);
-				double alfa = relation(xDivide[i].koefRazr, 1);
+				double alfa = reverseKoef(xDivide[i].koefRazr, 1);
+				double hX_pred = 0;
+				double hY_pred = 0;
 				for (size_t indX = 1; indX < xDivide[i].nIntervals; indX++, countX++)
 				{
-					arrayCells[countX][countY].x = lines[i][j].x + otnosh*lengthX;
-					arrayCells[countX][countY].y = lines[i][j].y + otnosh*lengthY;
+					hX_pred += otnosh*lengthX;
+					hY_pred += otnosh*lengthY;
+					arrayCells[countX][countY].x = lines[i][j].x + hX_pred;
+					arrayCells[countX][countY].y = lines[i][j].y + hY_pred;
 					otnosh *= alfa;
 				}
 			}
@@ -206,11 +210,15 @@ void generateArrayOfCells() {
 			else
 			{
 				double otnosh = relation(yDivide[j].koefRazr, yDivide[j].nIntervals);
-				double alfa = relation(yDivide[j].koefRazr, 1);
+				double alfa = reverseKoef(yDivide[j].koefRazr, 1);
+				double hX_pred = 0;
+				double hY_pred = 0;
 				for (size_t indY = 1; indY < yDivide[j].nIntervals; indY++, countY++)
 				{
-					arrayCells[countX][countY].x = arrayCells[countX][startY].x + otnosh*lengthX;
-					arrayCells[countX][countY].y = arrayCells[countX][startY].y + otnosh*lengthY;
+					hX_pred += otnosh*lengthX;
+					hY_pred += otnosh*lengthY;
+					arrayCells[countX][countY].x = arrayCells[countX][startY].x + hX_pred;
+					arrayCells[countX][countY].y = arrayCells[countX][startY].y + hY_pred;
 					otnosh *= alfa;
 				}
 			}
@@ -221,7 +229,7 @@ void generateArrayOfCells() {
 	{
 		for (int i = 0; i < xTotalCells; i++)
 		{
-			cells << setw(10) << arrayCells[i][j].x << " " << setw(4) << arrayCells[i][j].y;
+			cells << setw(15) << arrayCells[i][j].x << " " << setw(8) << arrayCells[i][j].y;
 		}
 		cells << endl;
 	}
