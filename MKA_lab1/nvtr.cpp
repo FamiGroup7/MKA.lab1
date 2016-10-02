@@ -1,6 +1,6 @@
 class nvtr {
 public:
-	int uzel[4], numberField;
+	int uzel[9], numberField;
 	nvtr(int uz1, int uz2, int uz3, int uz4, int numberField_new)
 	{
 		uzel[0] = uz1; uzel[1] = uz2; uzel[2] = uz3; uzel[3] = uz4;

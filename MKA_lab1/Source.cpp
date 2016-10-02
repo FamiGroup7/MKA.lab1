@@ -249,22 +249,114 @@ void generateArrayOfCells() {
 		ignoredFieldFile >> x >> y;
 		ignoredField.push_back(Point(x, y));
 	}
-	for (size_t j = 0; j < yTotalCells; j++)
+	for (size_t j = 0; j < yTotalCells - 1; j++)
 	{
-		for (size_t i = 0; i < xTotalCells; i++)
+		//*************пробежались по Х вдоль основной линии
+		for (size_t i = 0; i < xTotalCells - 1; i++)
 		{
 			if (!Inside(arrayCells[i][j], ignoredField)) {
-				xy.push_back(Point(arrayCells[i][j]));
+				xy.push_back(arrayCells[i][j]);
 			}
 			else
 				if (belongToLine(arrayCells[i][j], ignoredField)) {
-					xy.push_back(Point(arrayCells[i][j]));
+					xy.push_back(arrayCells[i][j]);
 				}
-			/*	else
-				cout << setw(8) << arrayCells[i][j].x << setw(8) << arrayCells[i][j].y << endl;*/
+
+			//добавляем доп. точку для квадратичных базисных функций
+			Point dopTochka((arrayCells[i][j].x + arrayCells[i + 1][j].x) / 2, 
+				(arrayCells[i][j].y + arrayCells[i + 1][j].y) / 2);
+			if (!Inside(dopTochka, ignoredField)) {
+				xy.push_back(dopTochka);
+			}
+			else
+				if (belongToLine(dopTochka, ignoredField)) {
+					xy.push_back(dopTochka);
+				}
 		}
+		//добавляем последнюю по Х точку
+		if (!Inside(arrayCells[xTotalCells-1][j], ignoredField)) {
+			xy.push_back(arrayCells[xTotalCells - 1][j]);
+		}
+		else
+			if (belongToLine(arrayCells[xTotalCells - 1][j], ignoredField)) {
+				xy.push_back(arrayCells[xTotalCells - 1][j]);
+			}
+
+		//*************закончили пробег по Х
+		//*************пробежались по Х вдоль средней линии
+		for (size_t i = 0; i < xTotalCells - 1; i++)
+		{
+			Point mainPoint((arrayCells[i][j].x + arrayCells[i][j + 1].x) / 2, 
+				(arrayCells[i][j].y + arrayCells[i][j + 1].y) / 2);
+			if (!Inside(mainPoint, ignoredField)) {
+				xy.push_back(mainPoint);
+			}
+			else
+				if (belongToLine(mainPoint, ignoredField)) {
+					xy.push_back(mainPoint);
+				}
+
+			//добавляем доп. точку для квадратичных базисных функций
+			Point nextPoint((arrayCells[i + 1][j].x + arrayCells[i + 1][j + 1].x) / 2, 
+				(arrayCells[i + 1][j].y + arrayCells[i + 1][j + 1].y) / 2);
+			Point dopTochka((mainPoint.x + nextPoint.x) / 2, (mainPoint.y + nextPoint.y) / 2);
+			if (!Inside(dopTochka, ignoredField)) {
+				xy.push_back(dopTochka);
+			}
+			else
+				if (belongToLine(dopTochka, ignoredField)) {
+					xy.push_back(dopTochka);
+				}
+		}
+		//добавляем последнюю по Х точку
+		Point dopTochka((arrayCells[xTotalCells - 1][j].x + arrayCells[xTotalCells - 1][j + 1].x) / 2, 
+			(arrayCells[xTotalCells - 1][j].y + arrayCells[xTotalCells - 1][j + 1].y) / 2);
+		if (!Inside(dopTochka, ignoredField)) {
+			xy.push_back(dopTochka);
+		}
+		else
+			if (belongToLine(dopTochka, ignoredField)) {
+				xy.push_back(dopTochka);
+			}
+
+		//*************закончили пробег по Х
+
 	}
 
+	//*************пробежались по Х вдоль последней основной горизонтальной линии
+	for (size_t i = 0; i < xTotalCells - 1; i++)
+	{
+		if (!Inside(arrayCells[i][yTotalCells - 1], ignoredField)) {
+			xy.push_back(arrayCells[i][yTotalCells - 1]);
+		}
+		else
+			if (belongToLine(arrayCells[i][yTotalCells - 1], ignoredField)) {
+				xy.push_back(arrayCells[i][yTotalCells - 1]);
+			}
+
+		//добавляем доп. точку для квадратичных базисных функций
+		Point dopTochka((arrayCells[i][yTotalCells - 1].x + arrayCells[i + 1][yTotalCells - 1].x) / 2,
+			(arrayCells[i][yTotalCells - 1].y + arrayCells[i + 1][yTotalCells - 1].y) / 2);
+		if (!Inside(dopTochka, ignoredField)) {
+			xy.push_back(dopTochka);
+		}
+		else
+			if (belongToLine(dopTochka, ignoredField)) {
+				xy.push_back(dopTochka);
+			}
+	}
+	//добавляем последнюю по Х точку
+	if (!Inside(arrayCells[xTotalCells - 1][yTotalCells - 1], ignoredField)) {
+		xy.push_back(arrayCells[xTotalCells - 1][yTotalCells - 1]);
+	}
+	else
+		if (belongToLine(arrayCells[xTotalCells - 1][yTotalCells - 1], ignoredField)) {
+			xy.push_back(arrayCells[xTotalCells - 1][yTotalCells - 1]);
+		}
+
+	//*************закончили пробег по Х
+
+	//формируем КЭ
 	for (size_t j = 0; j < yTotalCells - 1; j++)
 	{
 		for (size_t i = 0; i < xTotalCells - 1; i++)
@@ -278,10 +370,27 @@ void generateArrayOfCells() {
 				continue;
 			if ((temp.uzel[3] = indexXY(arrayCells[i+1][j+1])) == -1)
 				continue;
+
+			temp.uzel[4] = temp.uzel[0] + 1;
+			temp.uzel[8] = temp.uzel[2] + 1;
+
+			temp.uzel[5] = indexXY(Point((arrayCells[i][j].x + arrayCells[i][j + 1].x) / 2, 
+				(arrayCells[i][j].y + arrayCells[i][j + 1].y) / 2));
+			temp.uzel[6] = indexXY(Point((arrayCells[i][j].x + arrayCells[i + 1][j + 1].x) / 2,
+				(arrayCells[i][j].y + arrayCells[i + 1][j + 1].y) / 2));
+			temp.uzel[7] = indexXY(Point((arrayCells[i + 1][j].x + arrayCells[i + 1][j + 1].x) / 2,
+				(arrayCells[i + 1][j].y + arrayCells[i + 1][j + 1].y) / 2));
 			temp.numberField = 0;
 			KE.push_back(temp);
 		}
 	}
+
+	//Очистка памяти
+	for (size_t i = 0; i < xTotalCells; i++)
+	{
+		delete arrayCells[i];
+	}
+	delete arrayCells;
 
 }
 
@@ -292,7 +401,7 @@ void drawText(const char *text, int length, int x, int y)
 	double *matrix = new double[16];
 	glGetDoublev(GL_PROJECTION_MATRIX, matrix);
 	glLoadIdentity();
-	glOrtho(0, 600, 0, 600, -5, 5);
+	glOrtho(0, Width, 0, Height, -5, 5);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	glPushMatrix();
@@ -300,7 +409,7 @@ void drawText(const char *text, int length, int x, int y)
 	glRasterPos2i(x, y);
 	for (int i = 0; i<length; i++)
 	{
-		glutBitmapCharacter(GLUT_BITMAP_9_BY_15, (int)text[i]);//GLUT_BITMAP_9_BY_15
+		glutBitmapCharacter(GLUT_BITMAP_8_BY_13, (int)text[i]);//GLUT_BITMAP_9_BY_15
 	}
 	glPopMatrix();
 	glMatrixMode(GL_PROJECTION);
@@ -318,21 +427,21 @@ void Display(void) // функция вывода
 	glShadeModel(GL_FLAT); // отключение интерполяции
 	double h_x = lines[Nx - 1][0].x - lines[0][0].x;
 	double h_y = lines[0][Ny - 1].y - lines[0][0].y;
-	double E_x = -lines[0][0].x+0.03*h_x;
-	double E_y = -lines[0][0].y + 0.03*h_y;
-	double tempY;
-	if (h_x < h_y)tempY = 550 / h_y;
-	else tempY = 550 / h_x;
+	double E_x = -lines[0][0].x/*+0.03*h_x*/;
+	double E_y = -lines[0][0].y/* + 0.03*h_y*/;
+	double tempX,tempY;
+	tempX = (Width - 50) / h_x;
+	tempY = (Height - 50) / h_y;
 
 	glColor3ub(0, 0, 0);
 	glLineWidth(1);
 	for (int keIndex = 0; keIndex < KE.size(); keIndex++)
 	{
 		glBegin(GL_LINE_LOOP);
-		glVertex2f((E_x + xy[KE[keIndex].uzel[0]].x) * tempY, (E_y + xy[KE[keIndex].uzel[0]].y) * tempY);
-		glVertex2f((E_x + xy[KE[keIndex].uzel[1]].x) * tempY, (E_y + xy[KE[keIndex].uzel[1]].y) * tempY);
-		glVertex2f((E_x + xy[KE[keIndex].uzel[3]].x) * tempY, (E_y + xy[KE[keIndex].uzel[3]].y) * tempY);
-		glVertex2f((E_x + xy[KE[keIndex].uzel[2]].x) * tempY, (E_y + xy[KE[keIndex].uzel[2]].y) * tempY);
+		glVertex2f((E_x + xy[KE[keIndex].uzel[0]].x) * tempX, (E_y + xy[KE[keIndex].uzel[0]].y) * tempY);
+		glVertex2f((E_x + xy[KE[keIndex].uzel[1]].x) * tempX, (E_y + xy[KE[keIndex].uzel[1]].y) * tempY);
+		glVertex2f((E_x + xy[KE[keIndex].uzel[3]].x) * tempX, (E_y + xy[KE[keIndex].uzel[3]].y) * tempY);
+		glVertex2f((E_x + xy[KE[keIndex].uzel[2]].x) * tempX, (E_y + xy[KE[keIndex].uzel[2]].y) * tempY);
 		glEnd();
 	}
 
@@ -343,7 +452,7 @@ void Display(void) // функция вывода
 		glBegin(GL_LINE_STRIP);
 		for (j = 0; j < Ny; j++)
 		{
-			glVertex2f((E_x + lines[i][j].x) * tempY, (E_y + lines[i][j].y) * tempY);
+			glVertex2f((E_x + lines[i][j].x) * tempX, (E_y + lines[i][j].y) * tempY);
 		}
 		glEnd();
 	}
@@ -352,7 +461,7 @@ void Display(void) // функция вывода
 		glBegin(GL_LINE_STRIP);
 		for (i = 0; i < Nx; i++)
 		{
-			glVertex2f((E_x + lines[i][j].x) * tempY, (E_y + lines[i][j].y) * tempY);
+			glVertex2f((E_x + lines[i][j].x) * tempX, (E_y + lines[i][j].y) * tempY);
 		}
 		glEnd();
 	}
@@ -363,7 +472,7 @@ void Display(void) // функция вывода
 					char*text = new char[3];
 					//sprintf_s(text, 2, "%d", i);
 					sprintf(text, "%d", i);
-					drawText(text, strlen(text), (E_x + xy[i].x) * tempY, (E_y + xy[i].y) * tempY);
+					drawText(text, strlen(text), (E_x + xy[i].x) * tempX, (E_y + xy[i].y) * tempY);
 	}
 	//glColor3ub(255, 0, 0);
 	//glPointSize(2);
@@ -433,7 +542,7 @@ int main(int argc, char *argv[])
 	generateArrayOfCells();
 	output();
 
-	Width = 600;
+	Width = 1000;
 	Height = 600;
 	glutInitWindowSize(Width, Height);
 	glutCreateWindow("GLUT");
