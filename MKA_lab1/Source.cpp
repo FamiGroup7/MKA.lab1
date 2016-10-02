@@ -1,3 +1,5 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <stdio.h>
 #include <conio.h>
 #include <iostream>
@@ -7,6 +9,8 @@
 #include "Point.cpp"
 #include "Dividing.cpp"
 #include "nvtr.cpp"
+#include "glut.h"
+
 using namespace std;
 
 int Nx, Ny;
@@ -19,6 +23,7 @@ ofstream out("out.txt");
 vector<Point> xy;
 vector<nvtr> KE;
 
+GLint Width, Height;
 void output() {
 	ofstream xyFile("xy.txt");
 	ofstream nvtrFile("nvtr.txt");
@@ -279,8 +284,162 @@ void generateArrayOfCells() {
 	}
 
 }
-void main() {
+
+
+void drawText(const char *text, int length, int x, int y)
+{
+	glMatrixMode(GL_PROJECTION);
+	double *matrix = new double[16];
+	glGetDoublev(GL_PROJECTION_MATRIX, matrix);
+	glLoadIdentity();
+	glOrtho(0, 600, 0, 600, -5, 5);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	glPushMatrix();
+	glLoadIdentity();
+	glRasterPos2i(x, y);
+	for (int i = 0; i<length; i++)
+	{
+		glutBitmapCharacter(GLUT_BITMAP_9_BY_15, (int)text[i]);//GLUT_BITMAP_9_BY_15
+	}
+	glPopMatrix();
+	glMatrixMode(GL_PROJECTION);
+	glLoadMatrixd(matrix);
+	glMatrixMode(GL_MODELVIEW);
+
+}
+
+void Display(void) // функция вывода
+{
+	int i, j, k, t, colorSreda;
+	glClearColor(1, 1, 1, 1); // очистка буфера
+	glClear(GL_COLOR_BUFFER_BIT);
+	glColor3ub(0, 0, 0);
+	glShadeModel(GL_FLAT); // отключение интерполяции
+	double h_x = lines[Nx - 1][0].x - lines[0][0].x;
+	double h_y = lines[0][Ny - 1].y - lines[0][0].y;
+	double E_x = -lines[0][0].x+0.03*h_x;
+	double E_y = -lines[0][0].y + 0.03*h_y;
+	double tempY;
+	if (h_x < h_y)tempY = 550 / h_y;
+	else tempY = 550 / h_x;
+
+	glColor3ub(0, 0, 0);
+	glLineWidth(1);
+	for (int keIndex = 0; keIndex < KE.size(); keIndex++)
+	{
+		glBegin(GL_LINE_LOOP);
+		glVertex2f((E_x + xy[KE[keIndex].uzel[0]].x) * tempY, (E_y + xy[KE[keIndex].uzel[0]].y) * tempY);
+		glVertex2f((E_x + xy[KE[keIndex].uzel[1]].x) * tempY, (E_y + xy[KE[keIndex].uzel[1]].y) * tempY);
+		glVertex2f((E_x + xy[KE[keIndex].uzel[3]].x) * tempY, (E_y + xy[KE[keIndex].uzel[3]].y) * tempY);
+		glVertex2f((E_x + xy[KE[keIndex].uzel[2]].x) * tempY, (E_y + xy[KE[keIndex].uzel[2]].y) * tempY);
+		glEnd();
+	}
+
+	glLineWidth(2);
+	glColor3ub(255, 0, 0);
+	for (i = 0; i < Nx; i++)
+	{
+		glBegin(GL_LINE_STRIP);
+		for (j = 0; j < Ny; j++)
+		{
+			glVertex2f((E_x + lines[i][j].x) * tempY, (E_y + lines[i][j].y) * tempY);
+		}
+		glEnd();
+	}
+	for (j = 0; j < Ny; j++)
+	{
+		glBegin(GL_LINE_STRIP);
+		for (i = 0; i < Nx; i++)
+		{
+			glVertex2f((E_x + lines[i][j].x) * tempY, (E_y + lines[i][j].y) * tempY);
+		}
+		glEnd();
+	}
+
+	glColor3ub(0, 0, 0);
+	for (i = 0; i < xy.size(); i++)
+	{
+					char*text = new char[3];
+					//sprintf_s(text, 2, "%d", i);
+					sprintf(text, "%d", i);
+					drawText(text, strlen(text), (E_x + xy[i].x) * tempY, (E_y + xy[i].y) * tempY);
+	}
+	//glColor3ub(255, 0, 0);
+	//glPointSize(2);
+	//xy.size();
+	//glBegin(GL_POINTS);
+	//for (i = 0; i < nX; i++)
+	//{
+	//	for (j = 0; j < nY; j++)
+	//	{
+	//		glVertex2f((E_x + xNet[i])*tempY, (E_y + yNet[j])*tempY);
+	//	}
+	//}
+	//glEnd();
+
+	//glPointSize(7);
+	//glBegin(GL_POINTS);
+	//if (koordSourceX >= leftX && koordSourceX <= rightX && koordSourceY >= leftY && koordSourceY <= rightY)
+	//	glVertex2f((E_x + koordSourceX)*tempY, (E_y + koordSourceY)*tempY);
+	//glEnd();
+
+	//if (DrowText)
+	//{
+		//glColor3ub(0, 0, 255);
+		//for (j = 0; j < nY - 1; j++)
+		//{
+		//	for (i = 0; i < nX; i++)
+		//	{
+		//		if (matrixNode[i][j] != 'Y')
+		//		{
+		//			char*text = new char[3];
+		//			sprintf(text, "%d", NumberNode(xNet[i], yNet[j]));
+		//			drawText(text, strlen(text), (E_x + xNet[i]) * tempY, (E_y + yNet[j]) * tempY);
+		//		}
+		//	}
+	//	}
+	//	for (i = 0; i < nX; i++)
+	//	{
+	//		if (matrixNode[i][nY - 1] != 'Y')
+	//		{
+	//			char*text = new char[3];
+	//			sprintf(text, "%d", NumberNode(xNet[i], yNet[nY - 1]));
+	//			drawText(text, strlen(text), (E_x + xNet[i]) * tempY, (E_y + yNet[nY - 1] - (yNet[nY - 1] - yNet[nY - 2]) / 20) * tempY);
+	//		}
+	//	}
+	//}
+	glFinish();
+}
+void Reshape(GLint w, GLint h) // При изменении размеров окна
+{
+	Width = w;
+	Height = h;
+	glViewport(0, 0, w, h);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0, w, 0, h, -1.0, 1.0);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+}
+
+int main(int argc, char *argv[])
+{
+	setlocale(LC_ALL, "rus");
+	glutInit(&argc, argv);
+	glutInitDisplayMode(GLUT_RGB);
+
 	inputLines();
 	generateArrayOfCells();
 	output();
+
+	Width = 600;
+	Height = 600;
+	glutInitWindowSize(Width, Height);
+	glutCreateWindow("GLUT");
+	glutDisplayFunc(Display);
+	glutReshapeFunc(Reshape);
+	glutIdleFunc(Display);
+	glutMainLoop();
+	return 1;
 }
