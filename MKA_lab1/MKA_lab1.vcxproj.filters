@@ -27,6 +27,9 @@
     <ClCompile Include="nvtr.cpp">
       <Filter>Файлы исходного кода</Filter>
     </ClCompile>
+    <ClCompile Include="Matrix.cpp">
+      <Filter>Файлы исходного кода</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="W.txt">
@@ -51,6 +54,18 @@
       <Filter>Файлы ресурсов</Filter>
     </Text>
     <Text Include="cells.txt">
+      <Filter>Файлы ресурсов</Filter>
+    </Text>
+    <Text Include="ig.txt">
+      <Filter>Файлы ресурсов</Filter>
+    </Text>
+    <Text Include="jg.txt">
+      <Filter>Файлы ресурсов</Filter>
+    </Text>
+    <Text Include="M_local.txt">
+      <Filter>Файлы ресурсов</Filter>
+    </Text>
+    <Text Include="output.txt">
       <Filter>Файлы ресурсов</Filter>
     </Text>
   </ItemGroup>

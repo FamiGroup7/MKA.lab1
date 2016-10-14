@@ -112,6 +112,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Dividing.cpp" />
+    <ClCompile Include="Matrix.cpp" />
     <ClCompile Include="nvtr.cpp" />
     <ClCompile Include="Point.cpp" />
     <ClCompile Include="Source.cpp" />
@@ -120,9 +121,13 @@
     <Text Include="Area.txt" />
     <Text Include="cells.txt" />
     <Text Include="Dividing.txt" />
+    <Text Include="ig.txt" />
     <Text Include="ignoredFields.txt" />
+    <Text Include="jg.txt" />
+    <Text Include="M_local.txt" />
     <Text Include="nvtr.txt" />
     <Text Include="out.txt" />
+    <Text Include="output.txt" />
     <Text Include="W.txt" />
     <Text Include="xy.txt" />
   </ItemGroup>

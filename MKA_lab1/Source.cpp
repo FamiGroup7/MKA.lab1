@@ -6,6 +6,8 @@
 #include <fstream>
 #include <iomanip>
 #include <vector>
+#include <set>
+#include <map>
 #include "Point.cpp"
 #include "Dividing.cpp"
 #include "nvtr.cpp"
@@ -22,6 +24,9 @@ ofstream cells("cells.txt");
 ofstream out("out.txt");
 vector<Point> xy;
 vector<nvtr> KE;
+
+int*ig, *jg;
+double *ggl, *ggu, *di, *b, *q;
 
 GLint Width, Height;
 void output() {
@@ -376,10 +381,12 @@ void generateArrayOfCells() {
 
 			temp.uzel[5] = indexXY(Point((arrayCells[i][j].x + arrayCells[i][j + 1].x) / 2, 
 				(arrayCells[i][j].y + arrayCells[i][j + 1].y) / 2));
-			temp.uzel[6] = indexXY(Point((arrayCells[i][j].x + arrayCells[i + 1][j + 1].x) / 2,
-				(arrayCells[i][j].y + arrayCells[i + 1][j + 1].y) / 2));
-			temp.uzel[7] = indexXY(Point((arrayCells[i + 1][j].x + arrayCells[i + 1][j + 1].x) / 2,
-				(arrayCells[i + 1][j].y + arrayCells[i + 1][j + 1].y) / 2));
+			temp.uzel[6] = temp.uzel[5] + 1;
+			temp.uzel[7] = temp.uzel[6] + 1;
+			//temp.uzel[6] = indexXY(Point((arrayCells[i][j].x + arrayCells[i + 1][j + 1].x) / 2,
+			//	(arrayCells[i][j].y + arrayCells[i + 1][j + 1].y) / 2));
+			//temp.uzel[7] = indexXY(Point((arrayCells[i + 1][j].x + arrayCells[i + 1][j + 1].x) / 2,
+			//	(arrayCells[i + 1][j].y + arrayCells[i + 1][j + 1].y) / 2));
 			temp.numberField = 0;
 			KE.push_back(temp);
 		}
@@ -532,6 +539,450 @@ void Reshape(GLint w, GLint h) // При изменении размеров окна
 	glLoadIdentity();
 }
 
+void GeneratePortrait() {
+	set<size_t> * portrait = new set<size_t>[xy.size()];
+	for (size_t k = 0; k < KE.size(); k++)
+	{
+		for (size_t i = 0; i < 9; i++)
+		{
+			size_t a = KE[k].uzel[i];
+			for (size_t j = 0; j < i; j++)
+			{
+				size_t b = KE[k].uzel[j];
+				if (b > a)
+					portrait[b].insert(a);
+				else
+					portrait[a].insert(b);
+			}
+		}
+	}
+
+	ig = new int[xy.size() + 1];
+	di = new double[xy.size()];
+	b = new double[xy.size()];
+	q = new double[xy.size()];
+	ig[0] = ig[1] = 0;
+	for (size_t i = 0; i < xy.size(); i++)
+	{
+		di[i] = b[i] = q[i] = 0;
+		ig[i + 1] = ig[i] + portrait[i].size();
+	}
+	jg = new int[ig[xy.size()]];
+	ggl = new double[ig[xy.size()]];
+	ggu = new double[ig[xy.size()]];
+
+	for (size_t i = 0; i < ig[xy.size()]; i++)
+	{
+		ggl[i] = 0;
+		ggu[i] = 0;
+	}
+
+	size_t tmp = 0;
+	for (size_t i = 0; i < xy.size(); i++)
+	{
+		for (set<size_t>::iterator j = portrait[i].begin(); j != portrait[i].end(); ++j)
+		{
+			jg[tmp] = *j;
+			tmp++;
+		}
+		portrait[i].clear();
+	}
+	delete[] portrait;
+
+	int i, j;
+	ofstream igOut("ig.txt");
+	ofstream jgOut("jg.txt");
+	for (i = 0; i <= xy.size(); i++)
+	{
+		igOut << ig[i] << " ";
+	}
+	for (j = 0; j < ig[xy.size()]; j++)
+	{
+		jgOut << jg[j] << " ";
+	}
+}
+
+void genProfile()
+{
+	int KEcount = KE.size();
+	ig = new int[xy.size() + 1];
+
+	int *list[2], *listbeg;//список
+	list[0] = new int[xy.size()*xy.size()];
+	list[1] = new int[xy.size()*xy.size()];
+	listbeg = new int[xy.size()];
+	int listsize = -1;//количество элементов в списке, а также в jg
+
+	for (int i = 0; i < xy.size(); i++)	listbeg[i] = -1;
+
+	for (int ielem = 0; ielem < KEcount; ielem++)//проходим по всем КЭ
+	{
+		for (int i = 0; i < 9; i++)//перебираем базисные функции
+		{
+			int kk = KE[ielem].uzel[i];//kk - глобальный номер текущей рассматриваемой базисной функции
+									//int kk = 2 * (ielem / (Nx - 1))*(2 * Nx - 1) + 2 * (ielem % (Nx - 1));
+			for (int j = i + 1; j < 9; j++)//перебираем следующие за ней функции на элементе
+			{
+				int ind1 = kk;
+				int ind2 = KE[ielem].uzel[j];
+				if (ind2 < ind1)//вносится связь большего с меньшим
+				{
+					ind1 = ind2;
+					ind2 = kk;
+				}
+				int iaddr = listbeg[ind2];
+				if (iaddr < 0)//список был пуст
+				{
+					//создание списка
+					listsize++;
+					listbeg[ind2] = listsize;
+					list[0][listsize] = ind1;
+					list[1][listsize] = -1;
+				}
+				else//список не был пуст
+				{
+					//ищем в списке ind1
+					while (list[0][iaddr] < ind1 && list[1][iaddr] >= 0)		iaddr = list[1][iaddr];
+					if (list[0][iaddr] > ind1)
+					{
+						//если найденный там элемент имеет больший номер, 
+						//то нужно добавить перед ним, чтобы список был упорядоченным
+						listsize++;
+						list[0][listsize] = list[0][iaddr];	//перекладываем вперед найденный элемент
+						list[1][listsize] = list[1][iaddr];
+						list[0][iaddr] = ind1;			//на его место ложим новый
+						list[1][iaddr] = listsize;
+					}
+					else
+						if (list[0][iaddr] < ind1)
+						{
+							//не нашли, а список закончился
+							//добавляем в конец списка
+							listsize++;
+							list[1][iaddr] = listsize;
+							list[0][listsize] = ind1;
+							list[1][listsize] = -1;	//указываем, что это последний элемент списка
+						}
+				}
+			}
+		}
+	}
+	int gk = listsize + 1;
+	jg = new int[gk];
+	ig[0] = 0;
+	for (int i = 0; i < xy.size(); i++)
+	{
+		ig[i + 1] = ig[i];			//ig[i+1] - номер ячейки массива jg, куда надо поместить следующий элемент
+		int iaddr = listbeg[i];		//iaddr - индекс начала списка
+		while (iaddr >= 0)			//просматриваем список
+		{
+			jg[ig[i + 1]] = list[0][iaddr];
+			ig[i + 1]++;
+			iaddr = list[1][iaddr]; //переходим к следующему элементу
+		}
+	}
+	delete list[0]; delete list[1]; delete listbeg;
+
+
+	ofstream igOut("ig.txt");
+	ofstream jgOut("jg.txt");
+	for (int i = 0; i <= xy.size(); i++)
+	{
+		igOut << ig[i] << " ";
+	}
+	for (int j = 0; j < ig[xy.size()]; j++)
+	{
+		jgOut << jg[j] << " ";
+	}
+
+	ggl = new double[ig[xy.size()]];
+	ggl = new double[gk];
+	ggu = new double[gk];
+	di = new double[xy.size()];
+	b = new double[xy.size()];
+	q = new double[xy.size()];
+
+	for (int i = 0; i < gk; i++)	ggl[i] = ggu[i] = 0;
+	for (int i = 0; i < xy.size(); i++) di[i] = b[i] = q[i] = 0;
+}
+
+double Lambda(int numberField) {
+	switch (numberField) {
+	case 0: return 1;
+	default:
+		cerr << "Error in Lambda" << endl;
+		system("pause");
+		exit(1);
+	}
+}
+
+double Gamma(int numberField) {
+	switch (numberField) {
+	case 0: return 1;
+	default:
+		cerr << "Error in Gamma" << endl;
+		system("pause");
+		exit(1);
+	}
+}
+
+double Func(Point p) {
+	return p.x + p.y;
+}
+
+double AnaliticSolve(Point p) {
+	return p.x + p.y;
+}
+
+double BasicFunc1d(int num, double ksi) {
+	switch (num)
+	{
+	case 0: return 2 * (ksi - 0.5)*(ksi - 1);
+	case 1: return -4 * ksi * (ksi - 1);
+	case 2: return 2 * ksi * (ksi - 0.5); 
+	default:
+		cerr << "Error in Basic Function" << endl;
+		system("pause");
+		exit(1);
+	}
+}
+
+double difBasicFunc1d(int num, double ksi) {
+	switch (num)
+	{
+	case 0: return 4.0 * ksi - 3;
+	case 1: return 4.0 - 8.0 * ksi;
+	case 2: return 4.0 * ksi - 1;
+	default:
+		cerr << "Error in Basic Function" << endl;
+		system("pause");
+		exit(1);
+	}
+}
+void CreateLocalMatrix(int ielem, double integrPoints[], double tauKoefs[], int countExtraPoints, double A[9][9], double localB[9]) {
+	double alfa0, alfa1, alfa2, signAlfa0;
+	alfa0 = (xy[KE[ielem].uzel[1]].x - xy[KE[ielem].uzel[0]].x)*(xy[KE[ielem].uzel[2]].y - xy[KE[ielem].uzel[0]].y)
+		- (xy[KE[ielem].uzel[1]].y - xy[KE[ielem].uzel[0]].y)*(xy[KE[ielem].uzel[2]].x - xy[KE[ielem].uzel[0]].x);
+	alfa1= (xy[KE[ielem].uzel[1]].x - xy[KE[ielem].uzel[0]].x)*(xy[KE[ielem].uzel[3]].y - xy[KE[ielem].uzel[2]].y)
+		- (xy[KE[ielem].uzel[1]].y - xy[KE[ielem].uzel[0]].y)*(xy[KE[ielem].uzel[3]].x - xy[KE[ielem].uzel[2]].x);
+	alfa2 = (xy[KE[ielem].uzel[2]].y - xy[KE[ielem].uzel[0]].y)*(xy[KE[ielem].uzel[3]].x - xy[KE[ielem].uzel[1]].x)
+		- (xy[KE[ielem].uzel[2]].x - xy[KE[ielem].uzel[0]].x)*(xy[KE[ielem].uzel[3]].y - xy[KE[ielem].uzel[1]].y);
+	double beta[6] = {
+		xy[KE[ielem].uzel[2]].x - xy[KE[ielem].uzel[0]].x,
+		xy[KE[ielem].uzel[1]].x - xy[KE[ielem].uzel[0]].x,
+		xy[KE[ielem].uzel[2]].y - xy[KE[ielem].uzel[0]].y,
+		xy[KE[ielem].uzel[1]].y - xy[KE[ielem].uzel[0]].y,
+		xy[KE[ielem].uzel[0]].x - xy[KE[ielem].uzel[1]].x - xy[KE[ielem].uzel[2]].x + xy[KE[ielem].uzel[3]].x,
+		xy[KE[ielem].uzel[0]].y - xy[KE[ielem].uzel[1]].y - xy[KE[ielem].uzel[2]].y + xy[KE[ielem].uzel[3]].y
+	};
+	if (alfa0 > 0)signAlfa0 = 1;
+	else signAlfa0 = -1;
+
+	for (size_t i = 0; i < 9; i++)
+	{
+		for (size_t j = 0; j <= i; j++)
+		{
+			double resultG = 0;
+			double resultM = 0;
+			for (size_t k = 0; k < countExtraPoints; k++)
+			{
+				for (size_t l = 0; l < countExtraPoints; l++)
+				{
+					double J = alfa0 + alfa1*integrPoints[k] + alfa2*integrPoints[l];
+					double dfi_I_dksi = difBasicFunc1d(i % 3, integrPoints[k])*BasicFunc1d(i / 3, integrPoints[l]);
+					double dfi_I_deta = BasicFunc1d(i % 3, integrPoints[k])*difBasicFunc1d(i / 3, integrPoints[l]);
+					double dfi_J_dksi = difBasicFunc1d(j % 3, integrPoints[k])*BasicFunc1d(j / 3, integrPoints[l]);
+					double dfi_J_deta = BasicFunc1d(j % 3, integrPoints[k])*difBasicFunc1d(j / 3, integrPoints[l]);
+					resultG +=
+						((dfi_I_dksi*(beta[5] * integrPoints[k] + beta[2]) - dfi_I_deta*(beta[5] * integrPoints[l] * beta[3])) *
+							(dfi_J_dksi*(beta[5] * integrPoints[k] + beta[2]) - dfi_J_deta*(beta[5] * integrPoints[l] * beta[3])) +
+							(dfi_I_deta*(beta[4] * integrPoints[l] + beta[1]) - dfi_I_dksi*(beta[4] * integrPoints[k] + beta[0])) *
+							(dfi_J_deta*(beta[4] * integrPoints[l] + beta[1]) - dfi_J_dksi*(beta[4] * integrPoints[k] + beta[0])))*
+						tauKoefs[k] * tauKoefs[l] / J / 4;
+
+					resultM += BasicFunc1d(i % 3, integrPoints[k])*BasicFunc1d(i / 3, integrPoints[l]) *
+						BasicFunc1d(j % 3, integrPoints[k])*BasicFunc1d(j / 3, integrPoints[l])*
+						tauKoefs[k] * tauKoefs[l] * J / 4;
+				}
+			}
+			A[i][j] += resultG*signAlfa0*Lambda(KE[ielem].numberField) + resultM*signAlfa0*Gamma(KE[ielem].numberField);
+		}
+
+		//right part
+		double resultRightPart = 0;
+		for (size_t k = 0; k < countExtraPoints; k++)
+		{
+			for (size_t l = 0; l < countExtraPoints; l++)
+			{
+				double J = alfa0 + alfa1*integrPoints[k] + alfa2*integrPoints[l];
+
+				resultRightPart += BasicFunc1d(i % 3, integrPoints[k])*BasicFunc1d(i / 3, integrPoints[l]) *
+					Func(Point(xy[KE[ielem].uzel[0]].x + beta[1] * integrPoints[k] + beta[0] * integrPoints[l] + beta[4] * integrPoints[k] * integrPoints[l], 
+						xy[KE[ielem].uzel[0]].y + beta[3] * integrPoints[k] + beta[2] * integrPoints[l] + beta[5] * integrPoints[k] * integrPoints[l]))*
+					tauKoefs[k] * tauKoefs[l] * J / 4;
+			}
+		}
+		localB[i] += resultRightPart*signAlfa0;
+	}
+}
+
+void AddToMatrix(int posI, int posJ, double el)
+{
+	int tmp;
+	if (posI == posJ)
+	{
+		di[posI] += el;
+		return;
+	}
+	else
+	{
+		if (posI < posJ)
+		{
+			return;
+			tmp = posI;
+			posI = posJ;
+			posJ = tmp;
+		}
+		for (tmp = ig[posI]; tmp < ig[posI + 1]; tmp++)
+		{
+			if (jg[tmp] == posJ)
+			{
+				ggl[tmp] += el;
+				return;
+			}
+		}
+	}
+}
+
+void Addition(int ielem, double A[9][9], double localB[9]) {
+	int i, j, k, l, posI, posJ;
+	double koefI, koefJ;
+	for (i = 0; i < 9; i++)
+	{
+		b[KE[ielem].uzel[i]] += localB[i];
+		for (j = 0; j <= i; j++)
+		{
+			AddToMatrix(KE[ielem].uzel[i], KE[ielem].uzel[j], A[i][j]);
+		}
+	}
+}
+
+void GenerateGlobalMatrix() {
+	int ielem, i, j;
+	double tKoef = sqrt(3. / 5.);
+	double integrationPoints[3] = {
+		(1 - tKoef) / 2,
+		0.5,
+		(1 + tKoef) / 2
+	};
+	double tauKoefs[3] = {
+		5. / 9.,
+		8. / 9.,
+		5. / 9.
+	};
+	double A[9][9];
+	double localB[9];
+	for (ielem = 0; ielem < KE.size(); ielem++)
+	{
+		for (size_t i = 0; i < 9; i++)
+		{
+			localB[i] = 0;
+			for (size_t j = 0; j < 9; j++)
+			{
+				A[i][j] = 0;
+			}
+		}
+		CreateLocalMatrix(ielem, integrationPoints, tauKoefs, 3, A, localB);
+		Addition(ielem, A, localB);
+	}
+
+	//Edge2(1, 1, 1, 1);
+	//Edge3(1, 1, 1, 1);
+	//Edge1_sim(1, 1, 1, 1);
+	//for (i = 0; i < ig[kolvoRegularNode]; i++)
+	//{
+	//	ggu[i] = ggl[i];
+	//}
+	//Edge1_not_sim(1, 1, 1, 1);
+}
+
+//	Умножение матрицы на вектор
+void MultMatrixOnVector(double *in, double *out)
+{
+	int i, j;
+	double *out1;
+	out1 = new double[xy.size()];
+	for (i = 0; i<xy.size(); i++)
+	{
+		out1[i] = di[i] * in[i];
+		for (j = ig[i]; j<ig[i + 1]; j++)
+		{
+			out1[i] += ggl[j] * in[jg[j]];
+			out1[jg[j]] += ggu[j] * in[i];
+		}
+	}
+	for (i = 0; i<xy.size(); i++)
+		out[i] = out1[i];
+	delete[] out1;
+}
+
+double ScalarMult(double *v1, double *v2)
+{
+	int i;
+	double result;
+	result = 0;
+	for (i = 0; i < xy.size(); i++)
+	{
+		result += v1[i] * v2[i];
+	}
+	return result;
+}
+
+void runLOS()
+{
+	int maxiter = 10000, i;
+	double alfa, alfachisl, alfaznam, beta, betachisl, betaznam, checkE, epsMSG = 1e-16, startNeviazka;
+	double*r = new double[xy.size()];
+	double*s = new double[xy.size()];
+	double*z = new double[xy.size()];
+	double*p = new double[xy.size()];
+	double*rout = new double[xy.size()];
+	for (i = 0; i < xy.size(); i++)
+	{
+		s[i] = rout[i] = r[i] = q[i] = z[i] = p[i] = 0;
+	}
+	MultMatrixOnVector(q, r);
+	for (i = 0; i < xy.size(); i++)
+	{
+		r[i] = b[i] - r[i];
+		z[i] = r[i];
+	}
+	MultMatrixOnVector(z, p);
+	checkE = sqrt(ScalarMult(r, r) / ScalarMult(b, b));
+	//startNeviazka = checkE = ScalarMult(r, r);
+	for (int iter = 0; iter < maxiter && checkE >= epsMSG; iter++)
+	{
+		alfachisl = ScalarMult(p, r);
+		alfaznam = ScalarMult(p, p);
+		alfa = alfachisl / alfaznam;
+		for (i = 0; i < xy.size(); i++)
+		{
+			q[i] = q[i] + alfa*z[i];
+			r[i] = r[i] - alfa*p[i];
+		}
+		MultMatrixOnVector(r, rout);
+		betachisl = ScalarMult(p, rout);
+		betaznam = ScalarMult(p, p);
+		beta = -betachisl / betaznam;
+		for (i = 0; i < xy.size(); i++)
+		{
+			z[i] = r[i] + beta*z[i];
+			p[i] = rout[i] + beta*p[i];
+		}
+		checkE = sqrt(ScalarMult(r, r) / ScalarMult(b, b));
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	setlocale(LC_ALL, "rus");
@@ -541,6 +992,18 @@ int main(int argc, char *argv[])
 	inputLines();
 	generateArrayOfCells();
 	output();
+	//GeneratePortrait();
+	//genProfile();
+	//GenerateGlobalMatrix();
+	//runLOS();
+	//ofstream output("output.txt");
+	//double sumPogr = 0;
+	//for (size_t i = 0; i < xy.size(); i++)
+	//{
+	//	output << setw(20) << q[i] << setw(20) << AnaliticSolve(xy[i]) << setw(20) << q[i] - AnaliticSolve(xy[i]) << endl;
+	//	sumPogr += (q[i] - AnaliticSolve(xy[i]))*(q[i] - AnaliticSolve(xy[i]));
+	//}
+	//output << sqrt(sumPogr);
 
 	Width = 1000;
 	Height = 600;
