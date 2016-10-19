@@ -21,11 +21,11 @@ Point**lines;
 Dividing*xDivide;
 Dividing*yDivide;
 ofstream cells("cells.txt");
-ofstream out("out.txt");
 vector<Point> xy;
 vector<nvtr> KE;
+vector<Point> ignoredField;
 
-int*ig, *jg;
+int*ig, *jg, *igEdge, *jgEdge;
 double *ggl, *ggu, *di, *b, *q;
 
 GLint Width, Height;
@@ -42,7 +42,7 @@ void output() {
 	nvtrFile << KE.size() << endl;
 	for (size_t i = 0; i < KE.size(); i++)
 	{
-		for (size_t k = 0; k < 4; k++)
+		for (size_t k = 0; k < 9; k++)
 		{
 			nvtrFile << KE[i].uzel[k] << " ";
 		}
@@ -73,12 +73,16 @@ void inputLines() {
 	for (size_t i = 0; i < Nx - 1; i++)
 	{
 		divFile >> xDivide[i].nIntervals >> xDivide[i].koefRazr;
+		if (xDivide[i].koefRazr == -1)
+			xDivide[i].koefRazr = 1;
 		xTotalCells += xDivide[i].nIntervals;
 	}
 	xTotalCells++;
 	for (size_t i = 0; i < Ny - 1; i++)
 	{
 		divFile >> yDivide[i].nIntervals >> yDivide[i].koefRazr;
+		if (yDivide[i].koefRazr == -1)
+			yDivide[i].koefRazr = 1;
 		yTotalCells += yDivide[i].nIntervals;
 	}
 	yTotalCells++;
@@ -104,6 +108,7 @@ double reverseKoef(double alfa, double alfa1) {
 bool Inside(Point source,  vector<Point> poligons)
 {
 	int size = poligons.size();
+	if (size < 3)return false;
 
 	Point p, last = poligons.back();
 	int intersect_counter = int();
@@ -129,6 +134,7 @@ double length(Point p1, Point p2)
 //проверка принадлежности точки внутренней границе
 bool belongToLine(Point source, vector<Point> poligons)
 {
+	if (poligons.size() < 2)return false;
 	Point currentPoint = poligons[0];
 	for (size_t i = 1; i < poligons.size(); i++)
 	{
@@ -245,7 +251,6 @@ void generateArrayOfCells() {
 	}
 	
 	ifstream ignoredFieldFile("ignoredFields.txt");
-	vector<Point> ignoredField;
 	int nFields;
 	ignoredFieldFile >> nFields;
 	for (size_t i = 0; i < nFields; i++)
@@ -291,7 +296,7 @@ void generateArrayOfCells() {
 		//*************пробежались по Х вдоль средней линии
 		for (size_t i = 0; i < xTotalCells - 1; i++)
 		{
-			Point mainPoint((arrayCells[i][j].x + arrayCells[i][j + 1].x) / 2, 
+			Point mainPoint((arrayCells[i][j].x + arrayCells[i][j + 1].x) / 2,
 				(arrayCells[i][j].y + arrayCells[i][j + 1].y) / 2);
 			if (!Inside(mainPoint, ignoredField)) {
 				xy.push_back(mainPoint);
@@ -401,6 +406,44 @@ void generateArrayOfCells() {
 
 }
 
+void PrintGlobalMatrix() {
+	ofstream A("A.txt");
+	for (size_t i = 0; i < xy.size(); i++)
+	{
+		for (size_t j = 0; j < xy.size(); j++)
+		{
+			if (i == j) {
+				A << setw(18) << di[i];
+				continue;
+			}
+			else {
+				int I, J;
+				bool flag;
+				if (i > j) {
+					I = i; J = j;
+					flag = true;
+				}
+				else {
+					I = j; J = i;
+					flag = false;
+				}
+				for (size_t l = ig[I]; l < ig[I+1]; l++)
+				{
+					if (jg[l] == J) {
+						flag ? A << setw(18) << ggl[l] : A << setw(18) << ggu[l];
+					}
+				}
+			}
+		}
+		A << endl;
+	}
+	A << "B:" << endl;
+	for (size_t i = 0; i < xy.size(); i++)
+	{
+		A << setw(18) << b[i];
+	}
+	A.close();
+}
 
 void drawText(const char *text, int length, int x, int y)
 {
@@ -473,6 +516,7 @@ void Display(void) // функция вывода
 		glEnd();
 	}
 
+	//нумерация функций
 	glColor3ub(0, 0, 0);
 	for (i = 0; i < xy.size(); i++)
 	{
@@ -481,48 +525,18 @@ void Display(void) // функция вывода
 					sprintf(text, "%d", i);
 					drawText(text, strlen(text), (E_x + xy[i].x) * tempX, (E_y + xy[i].y) * tempY);
 	}
-	//glColor3ub(255, 0, 0);
-	//glPointSize(2);
-	//xy.size();
-	//glBegin(GL_POINTS);
-	//for (i = 0; i < nX; i++)
-	//{
-	//	for (j = 0; j < nY; j++)
-	//	{
-	//		glVertex2f((E_x + xNet[i])*tempY, (E_y + yNet[j])*tempY);
-	//	}
-	//}
-	//glEnd();
 
-	//glPointSize(7);
-	//glBegin(GL_POINTS);
-	//if (koordSourceX >= leftX && koordSourceX <= rightX && koordSourceY >= leftY && koordSourceY <= rightY)
-	//	glVertex2f((E_x + koordSourceX)*tempY, (E_y + koordSourceY)*tempY);
-	//glEnd();
-
-	//if (DrowText)
+	////нумерация ребер
+	//glColor3ub(0, 255, 0);
+	//for (size_t i = 0; i < xy.size(); i++)
 	//{
-		//glColor3ub(0, 0, 255);
-		//for (j = 0; j < nY - 1; j++)
-		//{
-		//	for (i = 0; i < nX; i++)
-		//	{
-		//		if (matrixNode[i][j] != 'Y')
-		//		{
-		//			char*text = new char[3];
-		//			sprintf(text, "%d", NumberNode(xNet[i], yNet[j]));
-		//			drawText(text, strlen(text), (E_x + xNet[i]) * tempY, (E_y + yNet[j]) * tempY);
-		//		}
-		//	}
-	//	}
-	//	for (i = 0; i < nX; i++)
+	//	for (size_t j = igEdge[i]; j < igEdge[i + 1]; j++)
 	//	{
-	//		if (matrixNode[i][nY - 1] != 'Y')
-	//		{
-	//			char*text = new char[3];
-	//			sprintf(text, "%d", NumberNode(xNet[i], yNet[nY - 1]));
-	//			drawText(text, strlen(text), (E_x + xNet[i]) * tempY, (E_y + yNet[nY - 1] - (yNet[nY - 1] - yNet[nY - 2]) / 20) * tempY);
-	//		}
+	//		char*text = new char[3];
+	//		//sprintf_s(text, 2, "%d", i);
+	//		sprintf(text, "%d", j);
+	//		drawText(text, strlen(text), (E_x + (xy[i].x + xy[jgEdge[j]].x) / 2) * tempX, 
+	//			(E_y + (xy[i].y + xy[jgEdge[j]].y) / 2) * tempY);
 	//	}
 	//}
 	glFinish();
@@ -602,10 +616,111 @@ void GeneratePortrait() {
 	}
 }
 
+bool IsEdgeExist(int ielem, int ind1, int ind2) {
+	if (abs(ind2 - ind1) == 2 ||
+		(abs(ind2 - ind1) == 1 && ind2 != 2))return true;
+	else return false;
+}
+void GenerateEdges()
+{
+	int KEcount = KE.size();
+
+	int *list[2], *listbeg;//список
+	list[0] = new int[xy.size()*xy.size()];
+	list[1] = new int[xy.size()*xy.size()];
+	listbeg = new int[xy.size()];
+	int listsize = -1;//количество элементов в списке, а также в jg
+
+	for (int i = 0; i < xy.size(); i++)	listbeg[i] = -1;
+
+	for (int ielem = 0; ielem < KEcount; ielem++)//проходим по всем КЭ
+	{
+		if (ielem == 9)
+			ielem = ielem;
+		for (int i = 0; i < 4; i++)//перебираем базисные функции
+		{
+			int kk = KE[ielem].uzel[i];//kk - глобальный номер текущей рассматриваемой базисной функции
+									   //int kk = 2 * (ielem / (Nx - 1))*(2 * Nx - 1) + 2 * (ielem % (Nx - 1));
+			for (int j = i + 1; j < 4; j++)//перебираем следующие за ней функции на элементе
+			{
+				int ind1 = kk;
+				int ind2 = KE[ielem].uzel[j];
+				if (!IsEdgeExist(ielem, i, j))
+				continue;
+				if (ind2 < ind1)//вносится связь большего с меньшим
+				{
+					ind1 = ind2;
+					ind2 = kk;
+				}
+				int iaddr = listbeg[ind2];
+				if (iaddr < 0)//список был пуст
+				{
+					//создание списка
+					listsize++;
+					listbeg[ind2] = listsize;
+					list[0][listsize] = ind1;
+					list[1][listsize] = -1;
+				}
+				else//список не был пуст
+				{
+					//ищем в списке ind1
+					while (list[0][iaddr] < ind1 && list[1][iaddr] >= 0)		iaddr = list[1][iaddr];
+					if (list[0][iaddr] > ind1)
+					{
+						//если найденный там элемент имеет больший номер, 
+						//то нужно добавить перед ним, чтобы список был упорядоченным
+						listsize++;
+						list[0][listsize] = list[0][iaddr];	//перекладываем вперед найденный элемент
+						list[1][listsize] = list[1][iaddr];
+						list[0][iaddr] = ind1;			//на его место ложим новый
+						list[1][iaddr] = listsize;
+					}
+					else
+						if (list[0][iaddr] < ind1)
+						{
+							//не нашли, а список закончился
+							//добавляем в конец списка
+							listsize++;
+							list[1][iaddr] = listsize;
+							list[0][listsize] = ind1;
+							list[1][listsize] = -1;	//указываем, что это последний элемент списка
+						}
+				}
+			}
+		}
+	}
+	int gk = listsize + 1;
+	jgEdge = new int[gk];
+	igEdge = new int[xy.size() + 1];
+	igEdge[0] = 0;
+	for (int i = 0; i < xy.size(); i++)
+	{
+		igEdge[i + 1] = igEdge[i];			//igEdge[i+1] - номер ячейки массива jgEdge, куда надо поместить следующий элемент
+		int iaddr = listbeg[i];		//iaddr - индекс начала списка
+		while (iaddr >= 0)			//просматриваем список
+		{
+			jgEdge[igEdge[i + 1]] = list[0][iaddr];
+			igEdge[i + 1]++;
+			iaddr = list[1][iaddr]; //переходим к следующему элементу
+		}
+	}
+	delete list[0]; delete list[1]; delete listbeg;
+
+
+	ofstream igEdgeOut("igEdge.txt");
+	ofstream jgEdgeOut("jgEdge.txt");
+	for (int i = 0; i <= xy.size(); i++)
+	{
+		igEdgeOut << igEdge[i] << " ";
+	}
+	for (int j = 0; j < igEdge[xy.size()]; j++)
+	{
+		jgEdgeOut << jgEdge[j] << " ";
+	}
+}
 void genProfile()
 {
 	int KEcount = KE.size();
-	ig = new int[xy.size() + 1];
 
 	int *list[2], *listbeg;//список
 	list[0] = new int[xy.size()*xy.size()];
@@ -668,6 +783,7 @@ void genProfile()
 		}
 	}
 	int gk = listsize + 1;
+	ig = new int[xy.size() + 1];
 	jg = new int[gk];
 	ig[0] = 0;
 	for (int i = 0; i < xy.size(); i++)
@@ -727,19 +843,20 @@ double Gamma(int numberField) {
 }
 
 double Func(Point p) {
-	return p.x + p.y;
+	//return p.x + p.y;
+	return p.x + p.y + p.x*p.y + p.x*p.x + p.y*p.y - 3;
 }
 
-double AnaliticSolve(Point p) {
-	return p.x + p.y;
+double AnaliticSolution(Point p) {
+	return 1 + p.x + p.y + p.x*p.y + p.x*p.x + p.y*p.y;
 }
 
 double BasicFunc1d(int num, double ksi) {
 	switch (num)
 	{
-	case 0: return 2 * (ksi - 0.5)*(ksi - 1);
-	case 1: return -4 * ksi * (ksi - 1);
-	case 2: return 2 * ksi * (ksi - 0.5); 
+	case 0: return 2.0 * (ksi - 0.5) * (ksi - 1.0);
+	case 1: return -4.0 * ksi * (ksi - 1.0);
+	case 2: return 2.0 * ksi * (ksi - 0.5);
 	default:
 		cerr << "Error in Basic Function" << endl;
 		system("pause");
@@ -780,7 +897,7 @@ void CreateLocalMatrix(int ielem, double integrPoints[], double tauKoefs[], int 
 
 	for (size_t i = 0; i < 9; i++)
 	{
-		for (size_t j = 0; j <= i; j++)
+		for (size_t j = 0; j < 9; j++)
 		{
 			double resultG = 0;
 			double resultM = 0;
@@ -788,24 +905,30 @@ void CreateLocalMatrix(int ielem, double integrPoints[], double tauKoefs[], int 
 			{
 				for (size_t l = 0; l < countExtraPoints; l++)
 				{
+					//double ksi = (beta[2] * (integrPoints[k] - xy[KE[ielem].uzel[0]].x) - beta[0] * (integrPoints[l] - xy[KE[ielem].uzel[0]].y)) /
+					//	(beta[1] * beta[2] - beta[0] * beta[3]);
+					//double eta = (beta[1] * (integrPoints[l] - xy[KE[ielem].uzel[0]].y) - beta[3] * (integrPoints[k] - xy[KE[ielem].uzel[0]].x)) /
+					//		(beta[1] * beta[2] - beta[0] * beta[3]);
+
 					double J = alfa0 + alfa1*integrPoints[k] + alfa2*integrPoints[l];
 					double dfi_I_dksi = difBasicFunc1d(i % 3, integrPoints[k])*BasicFunc1d(i / 3, integrPoints[l]);
 					double dfi_I_deta = BasicFunc1d(i % 3, integrPoints[k])*difBasicFunc1d(i / 3, integrPoints[l]);
 					double dfi_J_dksi = difBasicFunc1d(j % 3, integrPoints[k])*BasicFunc1d(j / 3, integrPoints[l]);
 					double dfi_J_deta = BasicFunc1d(j % 3, integrPoints[k])*difBasicFunc1d(j / 3, integrPoints[l]);
+
 					resultG +=
-						((dfi_I_dksi*(beta[5] * integrPoints[k] + beta[2]) - dfi_I_deta*(beta[5] * integrPoints[l] * beta[3])) *
-							(dfi_J_dksi*(beta[5] * integrPoints[k] + beta[2]) - dfi_J_deta*(beta[5] * integrPoints[l] * beta[3])) +
+						((dfi_I_dksi*(beta[5] * integrPoints[k] + beta[2]) - dfi_I_deta*(beta[5] * integrPoints[l] + beta[3])) *
+							(dfi_J_dksi*(beta[5] * integrPoints[k] + beta[2]) - dfi_J_deta*(beta[5] * integrPoints[l] + beta[3])) +
 							(dfi_I_deta*(beta[4] * integrPoints[l] + beta[1]) - dfi_I_dksi*(beta[4] * integrPoints[k] + beta[0])) *
 							(dfi_J_deta*(beta[4] * integrPoints[l] + beta[1]) - dfi_J_dksi*(beta[4] * integrPoints[k] + beta[0])))*
-						tauKoefs[k] * tauKoefs[l] / J / 4;
+						tauKoefs[k] * tauKoefs[l] / J ;
 
 					resultM += BasicFunc1d(i % 3, integrPoints[k])*BasicFunc1d(i / 3, integrPoints[l]) *
 						BasicFunc1d(j % 3, integrPoints[k])*BasicFunc1d(j / 3, integrPoints[l])*
-						tauKoefs[k] * tauKoefs[l] * J / 4;
+						tauKoefs[k] * tauKoefs[l] * J ;
 				}
 			}
-			A[i][j] += resultG*signAlfa0*Lambda(KE[ielem].numberField) + resultM*signAlfa0*Gamma(KE[ielem].numberField);
+			A[i][j] += resultG / 4.*signAlfa0*Lambda(KE[ielem].numberField) + resultM / 4.*signAlfa0*Gamma(KE[ielem].numberField);
 		}
 
 		//right part
@@ -817,12 +940,13 @@ void CreateLocalMatrix(int ielem, double integrPoints[], double tauKoefs[], int 
 				double J = alfa0 + alfa1*integrPoints[k] + alfa2*integrPoints[l];
 
 				resultRightPart += BasicFunc1d(i % 3, integrPoints[k])*BasicFunc1d(i / 3, integrPoints[l]) *
-					Func(Point(xy[KE[ielem].uzel[0]].x + beta[1] * integrPoints[k] + beta[0] * integrPoints[l] + beta[4] * integrPoints[k] * integrPoints[l], 
+					Func(Point(
+						xy[KE[ielem].uzel[0]].x + beta[1] * integrPoints[k] + beta[0] * integrPoints[l] + beta[4] * integrPoints[k] * integrPoints[l], 
 						xy[KE[ielem].uzel[0]].y + beta[3] * integrPoints[k] + beta[2] * integrPoints[l] + beta[5] * integrPoints[k] * integrPoints[l]))*
-					tauKoefs[k] * tauKoefs[l] * J / 4;
+					tauKoefs[k] * tauKoefs[l] * J;
 			}
 		}
-		localB[i] += resultRightPart*signAlfa0;
+		localB[i] += resultRightPart / 4. *signAlfa0;
 	}
 }
 
@@ -855,29 +979,137 @@ void AddToMatrix(int posI, int posJ, double el)
 }
 
 void Addition(int ielem, double A[9][9], double localB[9]) {
-	int i, j, k, l, posI, posJ;
-	double koefI, koefJ;
+	int i, j;
+	int relation[] = {
+		0,4,1,5,6,7,2,8,3
+	};
 	for (i = 0; i < 9; i++)
 	{
-		b[KE[ielem].uzel[i]] += localB[i];
-		for (j = 0; j <= i; j++)
+		b[KE[ielem].uzel[relation[i]]] += localB[i];
+		for (j = 0; j < 9; j++)
 		{
-			AddToMatrix(KE[ielem].uzel[i], KE[ielem].uzel[j], A[i][j]);
+			AddToMatrix(KE[ielem].uzel[relation[i]], KE[ielem].uzel[relation[j]], A[i][j]);
 		}
 	}
 }
 
+struct BoundType {
+	int b[3];
+	BoundType(int b1new,int b2new,int b3new){
+		b[0] = b1new; b[1] = b2new; b[2] = b3new;
+	}
+};
+
+vector<BoundType> GetBoundOfGlobalField() {
+	vector<BoundType> vect;
+	vector<Point> bound;
+	for (int i = 0; i < Ny; i++)
+	{
+		bound.push_back(lines[0][i]);
+	}
+	for (int i = 0; i < ignoredField.size(); i++)
+	{
+		bound.push_back(ignoredField[i]);
+	}
+	for (int i = Ny - 1; i > 0; i--)
+	{
+		bound.push_back(lines[Nx - 1][i]);
+	}
+	for (int i = Nx-1; i >= 0; i--)
+	{
+		bound.push_back(lines[i][0]);
+	}
+	
+	for (size_t i = 0; i < xy.size(); i++)
+	{
+		for (size_t j = igEdge[i]; j < igEdge[i+1]; j++)
+		{
+			Point dopPoint((xy[jgEdge[j]].x + xy[i].x) / 2, (xy[jgEdge[j]].y + xy[i].y) / 2);
+			if (belongToLine(Point(xy[i].x, xy[i].y), bound) &&
+				belongToLine(dopPoint, bound) &&
+				belongToLine(Point(xy[jgEdge[j]].x, xy[jgEdge[j]].y), bound)) {
+				int k = indexXY(dopPoint);
+				if (k == -1) {
+					cerr << "Error in GetBoundOfGlobal" << endl;
+					system("pause");
+					exit(1);
+				}
+				vect.push_back(BoundType(i, jgEdge[j], k));
+				cout << i << " " << jgEdge[j] << " " << k << endl;
+			}
+		}
+	}
+	return vect;
+}
+
+void Edge1_sim(vector<BoundType> bounds) {
+	ofstream ku1("ku1.txt");
+	for (size_t iBound = 0; iBound < bounds.size(); iBound++)
+	{
+		for (int ind = 0; ind < 3; ind++)//!!!!!!!!
+		{
+			int k = bounds[iBound].b[ind];
+			di[k] = 1;
+			for (int m = ig[k]; m < ig[k + 1]; m++)
+			{
+				b[jg[m]] -= ggl[m] * AnaliticSolution(xy[k]);
+				ggl[m] = 0;
+			}
+			b[k] = AnaliticSolution(xy[k]);
+			for (int l = 0; l < xy.size(); l++)
+			{
+				for (int m = ig[l]; m < ig[l + 1]; m++)
+				{
+					if (k == jg[m])
+					{
+						b[l] -= b[k] * ggl[m];
+						ggl[m] = 0;
+					}
+				}
+			}
+			ku1 << k << '\t' << b[k] << endl;
+		}
+	}
+}
+
+void Edge1_not_sim(vector<BoundType> bounds) {
+	ofstream ku1("ku1.txt");
+	for (size_t iBound = 0; iBound < bounds.size(); iBound++)
+	{
+		for (int ind = 0; ind < 3; ind++)//!!!!!!!!
+		{
+			int k = bounds[iBound].b[ind];
+			di[k] = 1;
+			b[k] = AnaliticSolution(xy[k]);
+			for (int m = ig[k]; m < ig[k + 1]; m++)
+			{
+				ggl[m] = 0;
+			}
+			for (int l = 0; l < xy.size(); l++)
+			{
+				for (int m = ig[l]; m < ig[l + 1]; m++)
+				{
+					if (k == jg[m])
+					{
+						ggu[m] = 0;
+					}
+				}
+			}
+			ku1 << k << '\t' << b[k] << endl;
+		}
+	}
+}
 void GenerateGlobalMatrix() {
 	int ielem, i, j;
 	double tKoef = sqrt(3. / 5.);
 	double integrationPoints[3] = {
-		(1 - tKoef) / 2,
 		0.5,
-		(1 + tKoef) / 2
+		(1 + tKoef) / 2,
+		(1 - tKoef) / 2
 	};
 	double tauKoefs[3] = {
-		5. / 9.,
 		8. / 9.,
+		5. / 9.,
 		5. / 9.
 	};
 	double A[9][9];
@@ -895,15 +1127,18 @@ void GenerateGlobalMatrix() {
 		CreateLocalMatrix(ielem, integrationPoints, tauKoefs, 3, A, localB);
 		Addition(ielem, A, localB);
 	}
-
+	PrintGlobalMatrix();
+	vector<BoundType> bounds = GetBoundOfGlobalField();
+	//Edge1_sim(bounds);
 	//Edge2(1, 1, 1, 1);
 	//Edge3(1, 1, 1, 1);
-	//Edge1_sim(1, 1, 1, 1);
-	//for (i = 0; i < ig[kolvoRegularNode]; i++)
-	//{
-	//	ggu[i] = ggl[i];
-	//}
-	//Edge1_not_sim(1, 1, 1, 1);
+	//Edge1_sim(bounds);
+	for (i = 0; i < ig[xy.size()]; i++)
+	{
+		ggu[i] = ggl[i];
+	}
+	Edge1_not_sim(bounds);
+	//PrintGlobalMatrix();
 }
 
 //	Умножение матрицы на вектор
@@ -938,7 +1173,7 @@ double ScalarMult(double *v1, double *v2)
 	return result;
 }
 
-void runLOS()
+void LOS()
 {
 	int maxiter = 10000, i;
 	double alfa, alfachisl, alfaznam, beta, betachisl, betaznam, checkE, epsMSG = 1e-16, startNeviazka;
@@ -983,6 +1218,48 @@ void runLOS()
 	}
 }
 
+void MSG()
+{
+	int maxiter = 10000, i;
+	double alfa, alfachisl, alfaznam, beta, betachisl, betaznam, checkE, epsMSG = 1e-16;
+	double*r = new double[xy.size()];
+	double*s = new double[xy.size()];
+	double*z = new double[xy.size()];
+	double*rout = new double[xy.size()];
+	for (i = 0; i < xy.size(); i++)
+	{
+		s[i] = rout[i] = r[i] = q[i] = z[i] = 0;
+	}
+	MultMatrixOnVector(q, r);
+	for (i = 0; i < xy.size(); i++)
+	{
+		r[i] = b[i] - r[i];
+		z[i] = r[i];
+	}
+	checkE = sqrt(ScalarMult(r, r) / ScalarMult(b, b));
+	for (int iter = 0; iter < maxiter && checkE >= epsMSG; iter++)
+	{
+		alfachisl = ScalarMult(r, r);
+		MultMatrixOnVector(z, s);
+		alfaznam = ScalarMult(s, z);
+		alfa = alfachisl / alfaznam;
+		for (i = 0; i < xy.size(); i++)
+		{
+			q[i] = q[i] + alfa*z[i];
+			rout[i] = r[i] - alfa*s[i];
+		}
+		betachisl = ScalarMult(rout, rout);
+		betaznam = ScalarMult(r, r);
+		beta = betachisl / betaznam;
+		for (i = 0; i < xy.size(); i++)
+		{
+			z[i] = rout[i] + beta*z[i];
+			r[i] = rout[i];
+		}
+		checkE = sqrt(ScalarMult(r, r) / ScalarMult(b, b));
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	setlocale(LC_ALL, "rus");
@@ -992,18 +1269,19 @@ int main(int argc, char *argv[])
 	inputLines();
 	generateArrayOfCells();
 	output();
-	//GeneratePortrait();
-	//genProfile();
-	//GenerateGlobalMatrix();
-	//runLOS();
-	//ofstream output("output.txt");
-	//double sumPogr = 0;
-	//for (size_t i = 0; i < xy.size(); i++)
-	//{
-	//	output << setw(20) << q[i] << setw(20) << AnaliticSolve(xy[i]) << setw(20) << q[i] - AnaliticSolve(xy[i]) << endl;
-	//	sumPogr += (q[i] - AnaliticSolve(xy[i]))*(q[i] - AnaliticSolve(xy[i]));
-	//}
-	//output << sqrt(sumPogr);
+	genProfile();
+	GenerateEdges();
+	GenerateGlobalMatrix();
+	LOS();
+	//MSG();
+	ofstream output("output.txt");
+	double sumPogr = 0;
+	for (size_t i = 0; i < xy.size(); i++)
+	{
+		output << setw(20) << q[i] << setw(20) << AnaliticSolution(xy[i]) << setw(20) << q[i] - AnaliticSolution(xy[i]) << setw(5) << i << endl;
+		sumPogr += (q[i] - AnaliticSolution(xy[i]))*(q[i] - AnaliticSolution(xy[i]));
+	}
+	output << sqrt(sumPogr);
 
 	Width = 1000;
 	Height = 600;

@@ -118,15 +118,18 @@
     <ClCompile Include="Source.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <Text Include="A.txt" />
     <Text Include="Area.txt" />
     <Text Include="cells.txt" />
     <Text Include="Dividing.txt" />
     <Text Include="ig.txt" />
+    <Text Include="igEdge.txt" />
     <Text Include="ignoredFields.txt" />
     <Text Include="jg.txt" />
+    <Text Include="jgEdge.txt" />
+    <Text Include="ku1.txt" />
     <Text Include="M_local.txt" />
     <Text Include="nvtr.txt" />
-    <Text Include="out.txt" />
     <Text Include="output.txt" />
     <Text Include="W.txt" />
     <Text Include="xy.txt" />
