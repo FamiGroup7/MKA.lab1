@@ -24,6 +24,7 @@ ofstream cells("cells.txt");
 vector<Point> xy;
 vector<nvtr> KE;
 vector<Point> ignoredField;
+vector<Point> allBounds;
 
 int*ig, *jg, *igEdge, *jgEdge;
 double *ggl, *ggu, *di, *b, *q;
@@ -131,14 +132,20 @@ double length(Point p1, Point p2)
 {
 	return sqrt((p2.x - p1.x)*(p2.x - p1.x) + (p2.y - p1.y)*(p2.y - p1.y));
 }
-//проверка принадлежности точки внутренней границе
-bool belongToLine(Point source, vector<Point> poligons)
+
+bool BelongToLine(Point source, Point start, Point end) {
+	if (length(start, end) == length(source, start) + length(source, end))
+		return true;
+	else return false;
+}
+
+bool BelongToPolygon(Point source, vector<Point> poligons)
 {
 	if (poligons.size() < 2)return false;
 	Point currentPoint = poligons[0];
 	for (size_t i = 1; i < poligons.size(); i++)
 	{
-		if (length(currentPoint, poligons[i]) == length(source, currentPoint) + length(source, poligons[i]))
+		if (BelongToLine(source, currentPoint, poligons[i]))
 			return true;
 		currentPoint = poligons[i];
 	}
@@ -268,7 +275,7 @@ void generateArrayOfCells() {
 				xy.push_back(arrayCells[i][j]);
 			}
 			else
-				if (belongToLine(arrayCells[i][j], ignoredField)) {
+				if (BelongToPolygon(arrayCells[i][j], ignoredField)) {
 					xy.push_back(arrayCells[i][j]);
 				}
 
@@ -279,7 +286,7 @@ void generateArrayOfCells() {
 				xy.push_back(dopTochka);
 			}
 			else
-				if (belongToLine(dopTochka, ignoredField)) {
+				if (BelongToPolygon(dopTochka, ignoredField)) {
 					xy.push_back(dopTochka);
 				}
 		}
@@ -288,7 +295,7 @@ void generateArrayOfCells() {
 			xy.push_back(arrayCells[xTotalCells - 1][j]);
 		}
 		else
-			if (belongToLine(arrayCells[xTotalCells - 1][j], ignoredField)) {
+			if (BelongToPolygon(arrayCells[xTotalCells - 1][j], ignoredField)) {
 				xy.push_back(arrayCells[xTotalCells - 1][j]);
 			}
 
@@ -302,7 +309,7 @@ void generateArrayOfCells() {
 				xy.push_back(mainPoint);
 			}
 			else
-				if (belongToLine(mainPoint, ignoredField)) {
+				if (BelongToPolygon(mainPoint, ignoredField)) {
 					xy.push_back(mainPoint);
 				}
 
@@ -314,7 +321,7 @@ void generateArrayOfCells() {
 				xy.push_back(dopTochka);
 			}
 			else
-				if (belongToLine(dopTochka, ignoredField)) {
+				if (BelongToPolygon(dopTochka, ignoredField)) {
 					xy.push_back(dopTochka);
 				}
 		}
@@ -325,7 +332,7 @@ void generateArrayOfCells() {
 			xy.push_back(dopTochka);
 		}
 		else
-			if (belongToLine(dopTochka, ignoredField)) {
+			if (BelongToPolygon(dopTochka, ignoredField)) {
 				xy.push_back(dopTochka);
 			}
 
@@ -340,7 +347,7 @@ void generateArrayOfCells() {
 			xy.push_back(arrayCells[i][yTotalCells - 1]);
 		}
 		else
-			if (belongToLine(arrayCells[i][yTotalCells - 1], ignoredField)) {
+			if (BelongToPolygon(arrayCells[i][yTotalCells - 1], ignoredField)) {
 				xy.push_back(arrayCells[i][yTotalCells - 1]);
 			}
 
@@ -351,7 +358,7 @@ void generateArrayOfCells() {
 			xy.push_back(dopTochka);
 		}
 		else
-			if (belongToLine(dopTochka, ignoredField)) {
+			if (BelongToPolygon(dopTochka, ignoredField)) {
 				xy.push_back(dopTochka);
 			}
 	}
@@ -360,7 +367,7 @@ void generateArrayOfCells() {
 		xy.push_back(arrayCells[xTotalCells - 1][yTotalCells - 1]);
 	}
 	else
-		if (belongToLine(arrayCells[xTotalCells - 1][yTotalCells - 1], ignoredField)) {
+		if (BelongToPolygon(arrayCells[xTotalCells - 1][yTotalCells - 1], ignoredField)) {
 			xy.push_back(arrayCells[xTotalCells - 1][yTotalCells - 1]);
 		}
 
@@ -843,11 +850,16 @@ double Gamma(int numberField) {
 }
 
 double Func(Point p) {
-	//return p.x + p.y;
+	//return p.x;
+	//return p.y;
+	//return 1 + p.x + p.y;
 	return p.x + p.y + p.x*p.y + p.x*p.x + p.y*p.y - 3;
 }
 
 double AnaliticSolution(Point p) {
+	//return p.x;
+	//return p.y;
+	//return 1 + p.x + p.y;
 	return 1 + p.x + p.y + p.x*p.y + p.x*p.x + p.y*p.y;
 }
 
@@ -998,57 +1010,89 @@ struct BoundType {
 	BoundType(int b1new,int b2new,int b3new){
 		b[0] = b1new; b[1] = b2new; b[2] = b3new;
 	}
+	BoundType(const BoundType &newBoundType) {
+		b[0] = newBoundType.b[0]; b[1] = newBoundType.b[1]; b[2] = newBoundType.b[2];
+	}
 };
 
-vector<BoundType> GetBoundOfGlobalField() {
-	vector<BoundType> vect;
-	vector<Point> bound;
+vector<vector<BoundType>> GetBoundOfGlobalField() {
+	vector<vector<BoundType>> mapBounds;
+	mapBounds.resize(3);
+
+
+	ifstream ku1bounds("edge1bounds.txt");
+	int nKU1;
+	ku1bounds >> nKU1;
+	Point **boundsOfEdge1 = new Point*[nKU1];
+	for (size_t i = 0; i < nKU1; i++)
+	{
+		boundsOfEdge1[i] = new Point[2];
+		ku1bounds >> boundsOfEdge1[i][0].x >> boundsOfEdge1[i][0].y >> boundsOfEdge1[i][1].x >> boundsOfEdge1[i][1].y;
+	}
+
 	for (int i = 0; i < Ny; i++)
 	{
-		bound.push_back(lines[0][i]);
+		allBounds.push_back(lines[0][i]);
 	}
 	for (int i = 0; i < ignoredField.size(); i++)
 	{
-		bound.push_back(ignoredField[i]);
+		allBounds.push_back(ignoredField[i]);
 	}
 	for (int i = Ny - 1; i > 0; i--)
 	{
-		bound.push_back(lines[Nx - 1][i]);
+		allBounds.push_back(lines[Nx - 1][i]);
 	}
 	for (int i = Nx-1; i >= 0; i--)
 	{
-		bound.push_back(lines[i][0]);
+		allBounds.push_back(lines[i][0]);
 	}
-	
 	for (size_t i = 0; i < xy.size(); i++)
 	{
 		for (size_t j = igEdge[i]; j < igEdge[i+1]; j++)
 		{
 			Point dopPoint((xy[jgEdge[j]].x + xy[i].x) / 2, (xy[jgEdge[j]].y + xy[i].y) / 2);
-			if (belongToLine(Point(xy[i].x, xy[i].y), bound) &&
-				belongToLine(dopPoint, bound) &&
-				belongToLine(Point(xy[jgEdge[j]].x, xy[jgEdge[j]].y), bound)) {
+
+			if (BelongToPolygon(Point(xy[i].x, xy[i].y), allBounds) &&
+				BelongToPolygon(dopPoint, allBounds) &&
+				BelongToPolygon(Point(xy[jgEdge[j]].x, xy[jgEdge[j]].y), allBounds)) {
 				int k = indexXY(dopPoint);
 				if (k == -1) {
 					cerr << "Error in GetBoundOfGlobal" << endl;
 					system("pause");
 					exit(1);
 				}
-				vect.push_back(BoundType(i, jgEdge[j], k));
-				cout << i << " " << jgEdge[j] << " " << k << endl;
+				bool flagIsEdge1 = false;
+				for (size_t indEdge1 = 0; indEdge1 < nKU1; indEdge1++)
+				{
+					if (BelongToLine(Point(xy[i].x, xy[i].y), boundsOfEdge1[indEdge1][0], boundsOfEdge1[indEdge1][1]) &&
+						BelongToLine(Point(xy[jgEdge[j]].x, xy[jgEdge[j]].y), boundsOfEdge1[indEdge1][0], boundsOfEdge1[indEdge1][1]))
+					{
+						flagIsEdge1 = true;
+						break;
+					}
+				}
+				BoundType edge(i, jgEdge[j], k);
+				if (flagIsEdge1) {
+					mapBounds[0].push_back(edge);
+					//mapBounds[0].push_back(edge);
+					cout << i << " " << jgEdge[j] << " " << k << endl;
+				}
+				else {
+					mapBounds[1].push_back(edge);
+				}
 			}
 		}
 	}
-	return vect;
+	return mapBounds;
 }
 
-void Edge1_sim(vector<BoundType> bounds) {
+void Edge1_sim(vector<BoundType> boundsEdge1) {
 	ofstream ku1("ku1.txt");
-	for (size_t iBound = 0; iBound < bounds.size(); iBound++)
+	for (size_t iBound = 0; iBound < boundsEdge1.size(); iBound++)
 	{
 		for (int ind = 0; ind < 3; ind++)//!!!!!!!!
 		{
-			int k = bounds[iBound].b[ind];
+			int k = boundsEdge1[iBound].b[ind];
 			di[k] = 1;
 			for (int m = ig[k]; m < ig[k + 1]; m++)
 			{
@@ -1072,13 +1116,13 @@ void Edge1_sim(vector<BoundType> bounds) {
 	}
 }
 
-void Edge1_not_sim(vector<BoundType> bounds) {
+void Edge1_not_sim(vector<BoundType> boundsEdge1) {
 	ofstream ku1("ku1.txt");
-	for (size_t iBound = 0; iBound < bounds.size(); iBound++)
+	for (size_t iBound = 0; iBound < boundsEdge1.size(); iBound++)
 	{
 		for (int ind = 0; ind < 3; ind++)//!!!!!!!!
 		{
-			int k = bounds[iBound].b[ind];
+			int k = boundsEdge1[iBound].b[ind];
 			di[k] = 1;
 			b[k] = AnaliticSolution(xy[k]);
 			for (int m = ig[k]; m < ig[k + 1]; m++)
@@ -1099,6 +1143,60 @@ void Edge1_not_sim(vector<BoundType> bounds) {
 		}
 	}
 }
+
+void Edge2(vector<BoundType> boundsEdge2) {
+	double h = 0.001;
+	int relation[] = { 0,2,1 };
+	int loc1dA[][3] = {
+		{4, 2, -1},
+		{ 2, 16, 2 },
+		{ -1, 2, 4 }
+	};
+	for (size_t iBound = 0; iBound < boundsEdge2.size(); iBound++)
+	{
+		double tetta[3];
+		double dh;
+		int koef;
+		if (xy[boundsEdge2[iBound].b[0]].x == xy[boundsEdge2[iBound].b[1]].x){
+			if (Inside(Point(xy[boundsEdge2[iBound].b[2]].x - h, xy[boundsEdge2[iBound].b[2]].y), allBounds)) {
+				koef = 1;
+			}
+			else {
+				koef = -1;
+			}
+			dh = fabs(xy[boundsEdge2[iBound].b[1]].y - xy[boundsEdge2[iBound].b[0]].y);
+			for (size_t indPos = 0; indPos < 3; indPos++)
+			{
+				tetta[relation[indPos]] = koef*(AnaliticSolution(Point(xy[boundsEdge2[iBound].b[indPos]].x + h, xy[boundsEdge2[iBound].b[indPos]].y)) -
+					AnaliticSolution(Point(xy[boundsEdge2[iBound].b[indPos]].x - h, xy[boundsEdge2[iBound].b[indPos]].y))) / (2 * h);
+			}
+		}
+		else{
+			if (Inside(Point(xy[boundsEdge2[iBound].b[2]].x, xy[boundsEdge2[iBound].b[2]].y - h), allBounds)) {
+				koef = 1;
+			}
+			else {
+				koef = -1;
+			}
+			dh = fabs(xy[boundsEdge2[iBound].b[1]].x - xy[boundsEdge2[iBound].b[0]].x);
+			for (size_t indPos = 0; indPos < 3; indPos++)
+			{
+				tetta[relation[indPos]] = koef*(AnaliticSolution(Point(xy[boundsEdge2[iBound].b[indPos]].x, xy[boundsEdge2[iBound].b[indPos]].y + h)) -
+					AnaliticSolution(Point(xy[boundsEdge2[iBound].b[indPos]].x, xy[boundsEdge2[iBound].b[indPos]].y - h))) / (2 * h);
+			}
+		}
+		for (size_t i = 0; i < 3; i++)
+		{
+			double value = 0;
+			for (size_t j = 0; j < 3; j++)
+			{
+				value += loc1dA[i][j] * tetta[j];
+			}
+			b[boundsEdge2[iBound].b[relation[i]]] += value*dh / 30;
+		}
+	}
+}
+
 void GenerateGlobalMatrix() {
 	int ielem, i, j;
 	double tKoef = sqrt(3. / 5.);
@@ -1128,16 +1226,14 @@ void GenerateGlobalMatrix() {
 		Addition(ielem, A, localB);
 	}
 	PrintGlobalMatrix();
-	vector<BoundType> bounds = GetBoundOfGlobalField();
-	//Edge1_sim(bounds);
-	//Edge2(1, 1, 1, 1);
-	//Edge3(1, 1, 1, 1);
-	//Edge1_sim(bounds);
+	vector<vector<BoundType>> bounds = GetBoundOfGlobalField();
+	Edge2(bounds[1]);
+	Edge1_sim(bounds[0]);
 	for (i = 0; i < ig[xy.size()]; i++)
 	{
 		ggu[i] = ggl[i];
 	}
-	Edge1_not_sim(bounds);
+	//Edge1_not_sim(bounds[0]);
 	//PrintGlobalMatrix();
 }
 
@@ -1272,8 +1368,10 @@ int main(int argc, char *argv[])
 	genProfile();
 	GenerateEdges();
 	GenerateGlobalMatrix();
-	LOS();
-	//MSG();
+	if (true) {
+		LOS();
+	}
+	else MSG();
 	ofstream output("output.txt");
 	double sumPogr = 0;
 	for (size_t i = 0; i < xy.size(); i++)

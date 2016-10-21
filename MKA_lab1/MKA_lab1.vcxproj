@@ -122,6 +122,7 @@
     <Text Include="Area.txt" />
     <Text Include="cells.txt" />
     <Text Include="Dividing.txt" />
+    <Text Include="edge1bounds.txt" />
     <Text Include="ig.txt" />
     <Text Include="igEdge.txt" />
     <Text Include="ignoredFields.txt" />

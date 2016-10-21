@@ -77,5 +77,8 @@
     <Text Include="A.txt">
       <Filter>Файлы ресурсов</Filter>
     </Text>
+    <Text Include="edge1bounds.txt">
+      <Filter>Файлы ресурсов</Filter>
+    </Text>
   </ItemGroup>
 </Project>
