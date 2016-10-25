@@ -12,6 +12,11 @@
 #include "Dividing.cpp"
 #include "nvtr.cpp"
 #include "glut.h"
+#define isDisplayingFunctions false
+#define isDisplayingEdges false
+#define isDisplayingAreas false
+#define isDisplayingQuadrangles false
+#define isDisplayingIsolines false
 
 using namespace std;
 
@@ -28,6 +33,35 @@ vector<Point> allBounds;
 
 int*ig, *jg, *igEdge, *jgEdge;
 double *ggl, *ggu, *di, *b, *q;
+
+const int COUNT_OF_ISOLINES = 15;
+const int COUNT_OF_COLOR_AREAS = 5;
+const int COUNT_OF_X_INNER_QUADRES = 20;
+double isolinesValues[COUNT_OF_ISOLINES];
+struct Map {
+	double value;
+	unsigned short red, green, blue;
+};
+Map rainbow[COUNT_OF_COLOR_AREAS];
+
+struct Triangle {
+	int nvtr[3];
+	Triangle(int uzel1, int uzel2, int uzel3) {
+		nvtr[0] = uzel1; nvtr[1] = uzel2; nvtr[2] = uzel3;
+	}
+	Triangle() {}
+};
+
+struct TriangleGeneral {
+	Point nvtr[3];
+	double solutions[3];
+};
+
+struct Quadrangle {
+	Point nvtr[4];
+	double solutions[4];
+	Quadrangle(){}
+};
 
 GLint Width, Height;
 void output() {
@@ -90,6 +124,36 @@ void inputLines() {
 
 }
 
+double BasicFunc1d(int num, double ksi) {
+	switch (num)
+	{
+	case 0: return 2.0 * (ksi - 0.5) * (ksi - 1.0);
+	case 1: return -4.0 * ksi * (ksi - 1.0);
+	case 2: return 2.0 * ksi * (ksi - 0.5);
+	default:
+		cerr << "Error in Basic Function" << endl;
+		system("pause");
+		exit(1);
+	}
+}
+
+double BasicFunc2d(int i, double ksi, double eta) {
+	return BasicFunc1d(i % 3, ksi)*BasicFunc1d(i / 3, eta);
+}
+
+double difBasicFunc1d(int num, double ksi) {
+	switch (num)
+	{
+	case 0: return 4.0 * ksi - 3;
+	case 1: return 4.0 - 8.0 * ksi;
+	case 2: return 4.0 * ksi - 1;
+	default:
+		cerr << "Error in Basic Function" << endl;
+		system("pause");
+		exit(1);
+	}
+}
+
 double findH(double length, double alfa, int n) {
 	if (alfa < 0)
 		alfa = -1 / alfa;
@@ -134,7 +198,7 @@ double length(Point p1, Point p2)
 }
 
 bool BelongToLine(Point source, Point start, Point end) {
-	if (length(start, end) == length(source, start) + length(source, end))
+	if (fabs(length(start, end) - (length(source, start) + length(source, end))) < 1e-10)
 		return true;
 	else return false;
 }
@@ -475,13 +539,133 @@ void drawText(const char *text, int length, int x, int y)
 
 }
 
+void GetColorForPoint(int indPoint) {
+	int i;
+	for (i = 0; i < COUNT_OF_COLOR_AREAS - 1 && q[indPoint] >= rainbow[i + 1].value; i++);
+
+		//glColor3ub((rainbow[i].red+rainbow[i+1].red)/2,
+		//	(rainbow[i].green + rainbow[i + 1].green) / 2, 
+		//	(rainbow[i].blue + rainbow[i + 1].blue) / 2);
+	
+	double basFuncOfValue = (q[indPoint] - rainbow[i].value) / (rainbow[i + 1].value - rainbow[i].value);
+
+	double red = rainbow[i].red + basFuncOfValue*(rainbow[i + 1].red - rainbow[i].red);
+	double green = rainbow[i].green + basFuncOfValue*(rainbow[i + 1].green - rainbow[i].green);
+	double blue = rainbow[i].blue + basFuncOfValue*(rainbow[i + 1].blue - rainbow[i].blue);
+
+	glColor3ub(rainbow[i].red + basFuncOfValue*(rainbow[i + 1].red - rainbow[i].red), 
+		rainbow[i].green + basFuncOfValue*(rainbow[i + 1].green - rainbow[i].green),
+		rainbow[i].blue + basFuncOfValue*(rainbow[i + 1].blue - rainbow[i].blue));
+}
+
+bool CheckIsolineOnTriangleEdge(double isoline, Point v0, Point v1, double q0, double q1, double E_x, double E_y, double tempX, double tempY) {
+	double minQ, maxQ;
+	if (q0 < q1) {
+		minQ = q0; maxQ = q1;
+	}
+	else {
+		maxQ = q0; minQ = q1;
+	}
+	if (isoline >= minQ && isoline <= maxQ) {
+		//double basiqFunc = (isoline - q[indMinQ]) / (q[indMaxQ] - q[indMinQ]);
+		//double x = xy[indMinQ].x + basiqFunc*fabs(xy[indMinQ].x - xy[indMaxQ].x);
+		//double y = xy[indMinQ].y + basiqFunc*fabs(xy[indMinQ].y - xy[indMaxQ].y);
+		//glVertex2f((E_x + xy[indMinQ].x + basiqFunc*fabs(xy[indMinQ].x- xy[indMaxQ].x)) * tempX, (E_y + xy[indMinQ].y + basiqFunc*fabs(xy[indMinQ].y - xy[indMaxQ].y)) * tempY);
+		glVertex2f((E_x + (v0.x + v1.x) / 2) * tempX, (E_y + (v0.y + v1.y) / 2) * tempY);
+		return true;
+	}
+	return false;
+}
+
+void DrawIsolineInTriangle(TriangleGeneral triangle, double E_x, double E_y, double tempX, double tempY) {
+	glColor3f(0, 0, 0);
+	for (size_t i = 0; i < COUNT_OF_ISOLINES; i++)
+	{
+		glBegin(GL_LINES);
+		CheckIsolineOnTriangleEdge(isolinesValues[i], triangle.nvtr[0], triangle.nvtr[1], triangle.solutions[0], triangle.solutions[1], E_x, E_y, tempX, tempY);
+		CheckIsolineOnTriangleEdge(isolinesValues[i], triangle.nvtr[1], triangle.nvtr[2], triangle.solutions[1], triangle.solutions[2], E_x, E_y, tempX, tempY);
+		CheckIsolineOnTriangleEdge(isolinesValues[i], triangle.nvtr[0], triangle.nvtr[2], triangle.solutions[0], triangle.solutions[2], E_x, E_y, tempX, tempY);
+		glEnd();
+	}
+}
+void DrawFieldOnTriangle(Triangle triangle, double E_x, double E_y, double tempX, double tempY) {
+	glBegin(GL_TRIANGLES);
+	for (size_t i = 0; i < 3; i++)
+	{
+		GetColorForPoint(triangle.nvtr[i]);
+		glVertex2f((E_x + xy[triangle.nvtr[i]].x) * tempX, (E_y + xy[triangle.nvtr[i]].y) * tempY);
+	}
+	glEnd();
+
+}
+
+void DrawFieldOnQuad(int v0, int v1, int v2, int v3, double E_x, double E_y, double tempX, double tempY) {
+	Triangle triangle;
+	triangle.nvtr[0] = v0; triangle.nvtr[1] = v1; triangle.nvtr[2] = v2;
+	DrawFieldOnTriangle(triangle, E_x, E_y, tempX, tempY);
+	triangle.nvtr[0] = v1; triangle.nvtr[1] = v2; triangle.nvtr[2] = v3;
+	DrawFieldOnTriangle(triangle, E_x, E_y, tempX, tempY);
+
+}
+
+Point CalcQuadranglesCoordinates(double ksi, double eta, double beta[6], double x0, double y0) {
+	Point point;
+	point.x = x0 + beta[1] * ksi + beta[0] * eta + beta[4] * ksi*eta;
+	point.y = y0 + beta[3] * ksi + beta[2] * eta + beta[5] * ksi*eta;
+	return point;
+}
+double CalcSolutionInPointOfSquare(double ksi, double eta, int ielem) {
+	double result = 0;
+	int relation[] = {
+		0,4,1,5,6,7,2,8,3
+	};
+	for (size_t i = 0; i < 9; i++)
+	{
+		result += BasicFunc2d(i, ksi, eta)*q[KE[ielem].uzel[relation[i]]];
+	}
+	return result;
+}
+
+vector<Quadrangle> GenerateInnerQuadres(int ielem) {
+	double beta[6] = {
+		xy[KE[ielem].uzel[2]].x - xy[KE[ielem].uzel[0]].x,
+		xy[KE[ielem].uzel[1]].x - xy[KE[ielem].uzel[0]].x,
+		xy[KE[ielem].uzel[2]].y - xy[KE[ielem].uzel[0]].y,
+		xy[KE[ielem].uzel[1]].y - xy[KE[ielem].uzel[0]].y,
+		xy[KE[ielem].uzel[0]].x - xy[KE[ielem].uzel[1]].x - xy[KE[ielem].uzel[2]].x + xy[KE[ielem].uzel[3]].x,
+		xy[KE[ielem].uzel[0]].y - xy[KE[ielem].uzel[1]].y - xy[KE[ielem].uzel[2]].y + xy[KE[ielem].uzel[3]].y
+	};
+	double hSquare = 1. / COUNT_OF_X_INNER_QUADRES;
+	vector<Quadrangle> quadrangles;
+	Quadrangle quad;
+	for (size_t j = 0; j < COUNT_OF_X_INNER_QUADRES; j++)
+	{
+		double eta = hSquare*j;
+		for (size_t i = 0; i < COUNT_OF_X_INNER_QUADRES; i++)
+		{
+			double ksi = hSquare*i;
+			quad.nvtr[0] = CalcQuadranglesCoordinates(ksi, eta, beta, xy[KE[ielem].uzel[0]].x, xy[KE[ielem].uzel[0]].y);
+			quad.nvtr[1] = CalcQuadranglesCoordinates(ksi + hSquare, eta, beta, xy[KE[ielem].uzel[0]].x, xy[KE[ielem].uzel[0]].y);
+			quad.nvtr[2] = CalcQuadranglesCoordinates(ksi, eta + hSquare, beta, xy[KE[ielem].uzel[0]].x, xy[KE[ielem].uzel[0]].y);
+			quad.nvtr[3] = CalcQuadranglesCoordinates(ksi + hSquare, eta + hSquare, beta, xy[KE[ielem].uzel[0]].x, xy[KE[ielem].uzel[0]].y);
+			quad.solutions[0] = CalcSolutionInPointOfSquare(ksi, eta, ielem);
+			quad.solutions[1] = CalcSolutionInPointOfSquare(ksi + hSquare, eta, ielem);
+			quad.solutions[2] = CalcSolutionInPointOfSquare(ksi, eta + hSquare, ielem);
+			quad.solutions[3] = CalcSolutionInPointOfSquare(ksi + hSquare, eta + hSquare, ielem);
+			quadrangles.push_back(quad);
+		}
+	}
+	return quadrangles;
+}
+
 void Display(void) // функци€ вывода
 {
 	int i, j, k, t, colorSreda;
 	glClearColor(1, 1, 1, 1); // очистка буфера
 	glClear(GL_COLOR_BUFFER_BIT);
 	glColor3ub(0, 0, 0);
-	glShadeModel(GL_FLAT); // отключение интерпол€ции
+	//glShadeModel(GL_FLAT); // отключение интерпол€ции
+	
 	double h_x = lines[Nx - 1][0].x - lines[0][0].x;
 	double h_y = lines[0][Ny - 1].y - lines[0][0].y;
 	double E_x = -lines[0][0].x/*+0.03*h_x*/;
@@ -490,7 +674,45 @@ void Display(void) // функци€ вывода
 	tempX = (Width - 50) / h_x;
 	tempY = (Height - 50) / h_y;
 
-	glColor3ub(0, 0, 0);
+	//закрашивание  Ё
+	for (size_t i = 0; i < KE.size(); i++)
+	{
+		//деление по диагонали снизу-вверх слева направо
+		DrawFieldOnQuad(KE[i].uzel[0], KE[i].uzel[4], KE[i].uzel[5], KE[i].uzel[6], E_x, E_y, tempX, tempY);
+		DrawFieldOnQuad(KE[i].uzel[4], KE[i].uzel[1], KE[i].uzel[6], KE[i].uzel[7], E_x, E_y, tempX, tempY);
+		DrawFieldOnQuad(KE[i].uzel[5], KE[i].uzel[6], KE[i].uzel[2], KE[i].uzel[8], E_x, E_y, tempX, tempY);
+		DrawFieldOnQuad(KE[i].uzel[6], KE[i].uzel[7], KE[i].uzel[8], KE[i].uzel[3], E_x, E_y, tempX, tempY);
+	}
+
+	//рисуем изолинии
+	for (size_t i = 0; i < KE.size() && isDisplayingIsolines; i++)
+	{
+		vector<Quadrangle> quadrangles = GenerateInnerQuadres(i);
+		for (size_t iQuad = 0; iQuad < quadrangles.size(); iQuad++)
+		{
+			TriangleGeneral triangle;
+			triangle.nvtr[0] = quadrangles[iQuad].nvtr[0]; triangle.nvtr[1] = quadrangles[iQuad].nvtr[1]; triangle.nvtr[2] = quadrangles[iQuad].nvtr[2];
+			triangle.solutions[0] = quadrangles[iQuad].solutions[0]; triangle.solutions[1] = quadrangles[iQuad].solutions[1]; triangle.solutions[2] = quadrangles[iQuad].solutions[2];
+			DrawIsolineInTriangle(triangle, E_x, E_y, tempX, tempY);
+
+			triangle.nvtr[0] = quadrangles[iQuad].nvtr[3]; triangle.nvtr[1] = quadrangles[iQuad].nvtr[1]; triangle.nvtr[2] = quadrangles[iQuad].nvtr[2];
+			triangle.solutions[0] = quadrangles[iQuad].solutions[3]; triangle.solutions[1] = quadrangles[iQuad].solutions[1]; triangle.solutions[2] = quadrangles[iQuad].solutions[2];
+			DrawIsolineInTriangle(triangle, E_x, E_y, tempX, tempY);
+
+			////отрисовка мелких четырехугольников
+			if (isDisplayingQuadrangles) {
+				glColor3f(0, 0, 0);
+				glBegin(GL_LINE_LOOP);
+				glVertex2f((E_x + quadrangles[iQuad].nvtr[0].x) * tempX, (E_y + quadrangles[iQuad].nvtr[0].y) * tempY);
+				glVertex2f((E_x + quadrangles[iQuad].nvtr[1].x) * tempX, (E_y + quadrangles[iQuad].nvtr[1].y) * tempY);
+				glVertex2f((E_x + quadrangles[iQuad].nvtr[3].x) * tempX, (E_y + quadrangles[iQuad].nvtr[3].y) * tempY);
+				glVertex2f((E_x + quadrangles[iQuad].nvtr[2].x) * tempX, (E_y + quadrangles[iQuad].nvtr[2].y) * tempY);
+				glEnd();
+			}
+		}
+	}
+
+	glColor3ub(100, 100, 100);
 	glLineWidth(1);
 	for (int keIndex = 0; keIndex < KE.size(); keIndex++)
 	{
@@ -502,9 +724,10 @@ void Display(void) // функци€ вывода
 		glEnd();
 	}
 
+	//отрисовка линий подобластей
 	glLineWidth(2);
 	glColor3ub(255, 0, 0);
-	for (i = 0; i < Nx; i++)
+	for (i = 0; i < Nx && isDisplayingAreas; i++)
 	{
 		glBegin(GL_LINE_STRIP);
 		for (j = 0; j < Ny; j++)
@@ -513,7 +736,7 @@ void Display(void) // функци€ вывода
 		}
 		glEnd();
 	}
-	for (j = 0; j < Ny; j++)
+	for (j = 0; j < Ny && isDisplayingAreas; j++)
 	{
 		glBegin(GL_LINE_STRIP);
 		for (i = 0; i < Nx; i++)
@@ -525,7 +748,7 @@ void Display(void) // функци€ вывода
 
 	//нумераци€ функций
 	glColor3ub(0, 0, 0);
-	for (i = 0; i < xy.size(); i++)
+	for (i = 0; i < xy.size() && isDisplayingFunctions; i++)
 	{
 					char*text = new char[3];
 					//sprintf_s(text, 2, "%d", i);
@@ -533,19 +756,20 @@ void Display(void) // функци€ вывода
 					drawText(text, strlen(text), (E_x + xy[i].x) * tempX, (E_y + xy[i].y) * tempY);
 	}
 
-	////нумераци€ ребер
-	//glColor3ub(0, 255, 0);
-	//for (size_t i = 0; i < xy.size(); i++)
-	//{
-	//	for (size_t j = igEdge[i]; j < igEdge[i + 1]; j++)
-	//	{
-	//		char*text = new char[3];
-	//		//sprintf_s(text, 2, "%d", i);
-	//		sprintf(text, "%d", j);
-	//		drawText(text, strlen(text), (E_x + (xy[i].x + xy[jgEdge[j]].x) / 2) * tempX, 
-	//			(E_y + (xy[i].y + xy[jgEdge[j]].y) / 2) * tempY);
-	//	}
-	//}
+
+	//нумераци€ ребер
+	glColor3ub(0, 255, 0);
+	for (size_t i = 0; i < xy.size() && isDisplayingEdges; i++)
+	{
+		for (size_t j = igEdge[i]; j < igEdge[i + 1]; j++)
+		{
+			char*text = new char[3];
+			//sprintf_s(text, 2, "%d", i);
+			sprintf(text, "%d", j);
+			drawText(text, strlen(text), (E_x + (xy[i].x + xy[jgEdge[j]].x) / 2) * tempX, 
+				(E_y + (xy[i].y + xy[jgEdge[j]].y) / 2) * tempY);
+		}
+	}
 	glFinish();
 }
 void Reshape(GLint w, GLint h) // ѕри изменении размеров окна
@@ -853,41 +1077,26 @@ double Func(Point p) {
 	//return p.x;
 	//return p.y;
 	//return 1 + p.x + p.y;
-	return p.x + p.y + p.x*p.y + p.x*p.x + p.y*p.y - 3;
+	//return - 2 * p.x + p.x * p.x - p.y;
+	return (p.x - 15)*(p.x - 15) + (p.y - 10)*(p.y - 10) - 4;
+	//return p.x*p.x + p.y*p.y - p.x*p.y - 4;
+	//return p.x + p.y + p.x*p.y + p.x*p.x + p.y*p.y - 3;
+	//return p.x*p.x*p.x + p.y*p.y*p.y - 6 * p.x - 6 * p.y;
+	//return -0.02*exp(0.1*(p.x + p.y)) + exp(0.1*(p.x + p.y));
 }
 
 double AnaliticSolution(Point p) {
 	//return p.x;
 	//return p.y;
 	//return 1 + p.x + p.y;
-	return 1 + p.x + p.y + p.x*p.y + p.x*p.x + p.y*p.y;
+	//return 2 - 2 * p.x + p.x * p.x - p.y;
+	return (p.x-15)*(p.x - 15) + (p.y - 10)*(p.y - 10);
+	//return p.x*p.x + p.y*p.y - p.x*p.y;
+	//return 1 + p.x + p.y + p.x*p.y + p.x*p.x + p.y*p.y;
+	//return p.x*p.x*p.x + p.y*p.y*p.y;
+	//return exp(0.1*(p.x + p.y));
 }
 
-double BasicFunc1d(int num, double ksi) {
-	switch (num)
-	{
-	case 0: return 2.0 * (ksi - 0.5) * (ksi - 1.0);
-	case 1: return -4.0 * ksi * (ksi - 1.0);
-	case 2: return 2.0 * ksi * (ksi - 0.5);
-	default:
-		cerr << "Error in Basic Function" << endl;
-		system("pause");
-		exit(1);
-	}
-}
-
-double difBasicFunc1d(int num, double ksi) {
-	switch (num)
-	{
-	case 0: return 4.0 * ksi - 3;
-	case 1: return 4.0 - 8.0 * ksi;
-	case 2: return 4.0 * ksi - 1;
-	default:
-		cerr << "Error in Basic Function" << endl;
-		system("pause");
-		exit(1);
-	}
-}
 void CreateLocalMatrix(int ielem, double integrPoints[], double tauKoefs[], int countExtraPoints, double A[9][9], double localB[9]) {
 	double alfa0, alfa1, alfa2, signAlfa0;
 	alfa0 = (xy[KE[ielem].uzel[1]].x - xy[KE[ielem].uzel[0]].x)*(xy[KE[ielem].uzel[2]].y - xy[KE[ielem].uzel[0]].y)
@@ -909,7 +1118,7 @@ void CreateLocalMatrix(int ielem, double integrPoints[], double tauKoefs[], int 
 
 	for (size_t i = 0; i < 9; i++)
 	{
-		for (size_t j = 0; j < 9; j++)
+		for (size_t j = 0; j <= i; j++)
 		{
 			double resultG = 0;
 			double resultM = 0;
@@ -998,7 +1207,7 @@ void Addition(int ielem, double A[9][9], double localB[9]) {
 	for (i = 0; i < 9; i++)
 	{
 		b[KE[ielem].uzel[relation[i]]] += localB[i];
-		for (j = 0; j < 9; j++)
+		for (j = 0; j <= i; j++)
 		{
 			AddToMatrix(KE[ielem].uzel[relation[i]], KE[ielem].uzel[relation[j]], A[i][j]);
 		}
@@ -1034,6 +1243,9 @@ vector<vector<BoundType>> GetBoundOfGlobalField() {
 	{
 		allBounds.push_back(lines[0][i]);
 	}
+	for (int i = 0; i < Nx && ignoredField.size()==0; i++) {
+		allBounds.push_back(lines[i][Ny - 1]);
+	}
 	for (int i = 0; i < ignoredField.size(); i++)
 	{
 		allBounds.push_back(ignoredField[i]);
@@ -1048,6 +1260,8 @@ vector<vector<BoundType>> GetBoundOfGlobalField() {
 	}
 	for (size_t i = 0; i < xy.size(); i++)
 	{
+		if (i == 26)
+			i = i;
 		for (size_t j = igEdge[i]; j < igEdge[i+1]; j++)
 		{
 			Point dopPoint((xy[jgEdge[j]].x + xy[i].x) / 2, (xy[jgEdge[j]].y + xy[i].y) / 2);
@@ -1227,8 +1441,8 @@ void GenerateGlobalMatrix() {
 	}
 	PrintGlobalMatrix();
 	vector<vector<BoundType>> bounds = GetBoundOfGlobalField();
-	Edge2(bounds[1]);
-	Edge1_sim(bounds[0]);
+	Edge2(bounds[0]);
+	Edge1_sim(bounds[1]);
 	for (i = 0; i < ig[xy.size()]; i++)
 	{
 		ggu[i] = ggl[i];
@@ -1356,6 +1570,79 @@ void MSG()
 	}
 }
 
+double CalcPogreshnost(double *qVect, int dimension) {
+	double sumPogr = 0;
+	double sumU = 0;
+	double correctSolution;
+	for (size_t i = 0; i < dimension; i++)
+	{
+		correctSolution = AnaliticSolution(xy[i]);
+		sumPogr += (qVect[i] - correctSolution)*(qVect[i] - correctSolution);
+		sumU += correctSolution*correctSolution;
+	}
+	return sqrt(sumPogr / sumU);
+}
+
+double CalcPogreshnost(double *qVect, int dimension, string fileName) {
+	ofstream output(fileName);
+	double sumPogr = 0;
+	double sumU = 0;
+	double correctSolution;
+	for (size_t i = 0; i < dimension; i++)
+	{
+		correctSolution = AnaliticSolution(xy[i]);
+		output << setw(20) << qVect[i] << setw(20) << correctSolution << setw(20) << qVect[i] - correctSolution << setw(5) << i << endl;
+		sumPogr += (qVect[i] - correctSolution)*(qVect[i] - correctSolution);
+		sumU += correctSolution*correctSolution;
+	}
+	correctSolution = sqrt(sumPogr / sumU);
+	output << correctSolution;
+	return correctSolution;
+}
+
+void PrepareSolutionToDisplay() {
+	double minValue, maxValue;
+	minValue = maxValue = q[0];
+	for (size_t i = 1; i < xy.size(); i++)
+	{
+		if (q[i] < minValue) minValue = q[i];
+		else if (q[i]>maxValue) maxValue = q[i];
+	}
+	//изолинии
+	double hValues = (maxValue - minValue) / (COUNT_OF_ISOLINES + 1);
+	double predVal = minValue;
+	for (size_t i = 0; i < COUNT_OF_ISOLINES; i++)
+	{
+		isolinesValues[i] = predVal + hValues;
+		predVal = isolinesValues[i];
+	}
+	//цветовые подобласти
+	hValues = (maxValue - minValue) / (COUNT_OF_COLOR_AREAS - 1);
+	for (size_t i = 0; i < COUNT_OF_COLOR_AREAS; i++)
+	{
+		rainbow[i].value = minValue + i*hValues;
+	}
+	////радуга
+	if (COUNT_OF_COLOR_AREAS == 7) {
+		rainbow[0].red = 255; rainbow[0].green = 0; rainbow[0].blue = 0;	//каждый
+		rainbow[1].red = 255; rainbow[1].green = 128; rainbow[1].blue = 0;	//охотник
+		rainbow[2].red = 255; rainbow[2].green = 255; rainbow[2].blue = 0;	//желает
+		rainbow[3].red = 0; rainbow[3].green = 255; rainbow[3].blue = 0;	//знать
+		rainbow[4].red = 0; rainbow[4].green = 255; rainbow[4].blue = 255;	//где
+		rainbow[5].red = 0; rainbow[5].green = 0; rainbow[5].blue = 255;	//сидит
+		rainbow[6].red = 128; rainbow[6].green = 0; rainbow[6].blue = 128;	//фазан
+	}
+
+	if (COUNT_OF_COLOR_AREAS == 5) {
+		rainbow[0].red = 255; rainbow[0].green = 0; rainbow[0].blue = 0;	//каждый
+		rainbow[1].red = 255; rainbow[1].green = 255; rainbow[1].blue = 0;	//желает
+		rainbow[2].red = 0; rainbow[2].green = 255; rainbow[2].blue = 0;	//знать
+		rainbow[3].red = 0; rainbow[3].green = 0; rainbow[3].blue = 255;	//сидит
+		rainbow[4].red = 255; rainbow[4].green = 0; rainbow[4].blue = 255;	//фазан
+	}
+
+}
+
 int main(int argc, char *argv[])
 {
 	setlocale(LC_ALL, "rus");
@@ -1372,14 +1659,8 @@ int main(int argc, char *argv[])
 		LOS();
 	}
 	else MSG();
-	ofstream output("output.txt");
-	double sumPogr = 0;
-	for (size_t i = 0; i < xy.size(); i++)
-	{
-		output << setw(20) << q[i] << setw(20) << AnaliticSolution(xy[i]) << setw(20) << q[i] - AnaliticSolution(xy[i]) << setw(5) << i << endl;
-		sumPogr += (q[i] - AnaliticSolution(xy[i]))*(q[i] - AnaliticSolution(xy[i]));
-	}
-	output << sqrt(sumPogr);
+	CalcPogreshnost(q, xy.size(), "output.txt");
+	PrepareSolutionToDisplay();
 
 	Width = 1000;
 	Height = 600;
