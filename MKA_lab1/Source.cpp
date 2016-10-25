@@ -16,7 +16,7 @@
 #define isDisplayingEdges false
 #define isDisplayingAreas false
 #define isDisplayingQuadrangles false
-#define isDisplayingIsolines false
+#define isDisplayingIsolines true
 
 using namespace std;
 
@@ -34,7 +34,7 @@ vector<Point> allBounds;
 int*ig, *jg, *igEdge, *jgEdge;
 double *ggl, *ggu, *di, *b, *q;
 
-const int COUNT_OF_ISOLINES = 15;
+const int COUNT_OF_ISOLINES = 10;
 const int COUNT_OF_COLOR_AREAS = 5;
 const int COUNT_OF_X_INNER_QUADRES = 20;
 double isolinesValues[COUNT_OF_ISOLINES];
@@ -660,7 +660,6 @@ vector<Quadrangle> GenerateInnerQuadres(int ielem) {
 
 void Display(void) // функци€ вывода
 {
-	int i, j, k, t, colorSreda;
 	glClearColor(1, 1, 1, 1); // очистка буфера
 	glClear(GL_COLOR_BUFFER_BIT);
 	glColor3ub(0, 0, 0);
@@ -675,71 +674,68 @@ void Display(void) // функци€ вывода
 	tempY = (Height - 50) / h_y;
 
 	//закрашивание  Ё
-	for (size_t i = 0; i < KE.size(); i++)
+	for (size_t iKE = 0; iKE < KE.size(); iKE++)
 	{
 		//деление по диагонали снизу-вверх слева направо
-		DrawFieldOnQuad(KE[i].uzel[0], KE[i].uzel[4], KE[i].uzel[5], KE[i].uzel[6], E_x, E_y, tempX, tempY);
-		DrawFieldOnQuad(KE[i].uzel[4], KE[i].uzel[1], KE[i].uzel[6], KE[i].uzel[7], E_x, E_y, tempX, tempY);
-		DrawFieldOnQuad(KE[i].uzel[5], KE[i].uzel[6], KE[i].uzel[2], KE[i].uzel[8], E_x, E_y, tempX, tempY);
-		DrawFieldOnQuad(KE[i].uzel[6], KE[i].uzel[7], KE[i].uzel[8], KE[i].uzel[3], E_x, E_y, tempX, tempY);
-	}
+		DrawFieldOnQuad(KE[iKE].uzel[0], KE[iKE].uzel[4], KE[iKE].uzel[5], KE[iKE].uzel[6], E_x, E_y, tempX, tempY);
+		DrawFieldOnQuad(KE[iKE].uzel[4], KE[iKE].uzel[1], KE[iKE].uzel[6], KE[iKE].uzel[7], E_x, E_y, tempX, tempY);
+		DrawFieldOnQuad(KE[iKE].uzel[5], KE[iKE].uzel[6], KE[iKE].uzel[2], KE[iKE].uzel[8], E_x, E_y, tempX, tempY);
+		DrawFieldOnQuad(KE[iKE].uzel[6], KE[iKE].uzel[7], KE[iKE].uzel[8], KE[iKE].uzel[3], E_x, E_y, tempX, tempY);
 
-	//рисуем изолинии
-	for (size_t i = 0; i < KE.size() && isDisplayingIsolines; i++)
-	{
-		vector<Quadrangle> quadrangles = GenerateInnerQuadres(i);
-		for (size_t iQuad = 0; iQuad < quadrangles.size(); iQuad++)
-		{
-			TriangleGeneral triangle;
-			triangle.nvtr[0] = quadrangles[iQuad].nvtr[0]; triangle.nvtr[1] = quadrangles[iQuad].nvtr[1]; triangle.nvtr[2] = quadrangles[iQuad].nvtr[2];
-			triangle.solutions[0] = quadrangles[iQuad].solutions[0]; triangle.solutions[1] = quadrangles[iQuad].solutions[1]; triangle.solutions[2] = quadrangles[iQuad].solutions[2];
-			DrawIsolineInTriangle(triangle, E_x, E_y, tempX, tempY);
+		//рисуем изолинии
+		if (isDisplayingIsolines) {
+			vector<Quadrangle> quadrangles = GenerateInnerQuadres(iKE);
+			for (size_t iQuad = 0; iQuad < quadrangles.size(); iQuad++)
+			{
+				TriangleGeneral triangle;
+				triangle.nvtr[0] = quadrangles[iQuad].nvtr[0]; triangle.nvtr[1] = quadrangles[iQuad].nvtr[1]; triangle.nvtr[2] = quadrangles[iQuad].nvtr[2];
+				triangle.solutions[0] = quadrangles[iQuad].solutions[0]; triangle.solutions[1] = quadrangles[iQuad].solutions[1]; triangle.solutions[2] = quadrangles[iQuad].solutions[2];
+				DrawIsolineInTriangle(triangle, E_x, E_y, tempX, tempY);
 
-			triangle.nvtr[0] = quadrangles[iQuad].nvtr[3]; triangle.nvtr[1] = quadrangles[iQuad].nvtr[1]; triangle.nvtr[2] = quadrangles[iQuad].nvtr[2];
-			triangle.solutions[0] = quadrangles[iQuad].solutions[3]; triangle.solutions[1] = quadrangles[iQuad].solutions[1]; triangle.solutions[2] = quadrangles[iQuad].solutions[2];
-			DrawIsolineInTriangle(triangle, E_x, E_y, tempX, tempY);
+				triangle.nvtr[0] = quadrangles[iQuad].nvtr[3]; triangle.nvtr[1] = quadrangles[iQuad].nvtr[1]; triangle.nvtr[2] = quadrangles[iQuad].nvtr[2];
+				triangle.solutions[0] = quadrangles[iQuad].solutions[3]; triangle.solutions[1] = quadrangles[iQuad].solutions[1]; triangle.solutions[2] = quadrangles[iQuad].solutions[2];
+				DrawIsolineInTriangle(triangle, E_x, E_y, tempX, tempY);
 
-			////отрисовка мелких четырехугольников
-			if (isDisplayingQuadrangles) {
-				glColor3f(0, 0, 0);
-				glBegin(GL_LINE_LOOP);
-				glVertex2f((E_x + quadrangles[iQuad].nvtr[0].x) * tempX, (E_y + quadrangles[iQuad].nvtr[0].y) * tempY);
-				glVertex2f((E_x + quadrangles[iQuad].nvtr[1].x) * tempX, (E_y + quadrangles[iQuad].nvtr[1].y) * tempY);
-				glVertex2f((E_x + quadrangles[iQuad].nvtr[3].x) * tempX, (E_y + quadrangles[iQuad].nvtr[3].y) * tempY);
-				glVertex2f((E_x + quadrangles[iQuad].nvtr[2].x) * tempX, (E_y + quadrangles[iQuad].nvtr[2].y) * tempY);
-				glEnd();
+				////отрисовка мелких четырехугольников
+				if (isDisplayingQuadrangles) {
+					glColor3f(0, 0, 0);
+					glBegin(GL_LINE_LOOP);
+					glVertex2f((E_x + quadrangles[iQuad].nvtr[0].x) * tempX, (E_y + quadrangles[iQuad].nvtr[0].y) * tempY);
+					glVertex2f((E_x + quadrangles[iQuad].nvtr[1].x) * tempX, (E_y + quadrangles[iQuad].nvtr[1].y) * tempY);
+					glVertex2f((E_x + quadrangles[iQuad].nvtr[3].x) * tempX, (E_y + quadrangles[iQuad].nvtr[3].y) * tempY);
+					glVertex2f((E_x + quadrangles[iQuad].nvtr[2].x) * tempX, (E_y + quadrangles[iQuad].nvtr[2].y) * tempY);
+					glEnd();
+				}
 			}
 		}
-	}
 
-	glColor3ub(100, 100, 100);
-	glLineWidth(1);
-	for (int keIndex = 0; keIndex < KE.size(); keIndex++)
-	{
+		//отрисовка  Ё
+		glColor3ub(100, 100, 100);
+		glLineWidth(1);
 		glBegin(GL_LINE_LOOP);
-		glVertex2f((E_x + xy[KE[keIndex].uzel[0]].x) * tempX, (E_y + xy[KE[keIndex].uzel[0]].y) * tempY);
-		glVertex2f((E_x + xy[KE[keIndex].uzel[1]].x) * tempX, (E_y + xy[KE[keIndex].uzel[1]].y) * tempY);
-		glVertex2f((E_x + xy[KE[keIndex].uzel[3]].x) * tempX, (E_y + xy[KE[keIndex].uzel[3]].y) * tempY);
-		glVertex2f((E_x + xy[KE[keIndex].uzel[2]].x) * tempX, (E_y + xy[KE[keIndex].uzel[2]].y) * tempY);
+		glVertex2f((E_x + xy[KE[iKE].uzel[0]].x) * tempX, (E_y + xy[KE[iKE].uzel[0]].y) * tempY);
+		glVertex2f((E_x + xy[KE[iKE].uzel[1]].x) * tempX, (E_y + xy[KE[iKE].uzel[1]].y) * tempY);
+		glVertex2f((E_x + xy[KE[iKE].uzel[3]].x) * tempX, (E_y + xy[KE[iKE].uzel[3]].y) * tempY);
+		glVertex2f((E_x + xy[KE[iKE].uzel[2]].x) * tempX, (E_y + xy[KE[iKE].uzel[2]].y) * tempY);
 		glEnd();
 	}
 
 	//отрисовка линий подобластей
 	glLineWidth(2);
 	glColor3ub(255, 0, 0);
-	for (i = 0; i < Nx && isDisplayingAreas; i++)
+	for (int i = 0; i < Nx && isDisplayingAreas; i++)
 	{
 		glBegin(GL_LINE_STRIP);
-		for (j = 0; j < Ny; j++)
+		for (int j = 0; j < Ny; j++)
 		{
 			glVertex2f((E_x + lines[i][j].x) * tempX, (E_y + lines[i][j].y) * tempY);
 		}
 		glEnd();
 	}
-	for (j = 0; j < Ny && isDisplayingAreas; j++)
+	for (int j = 0; j < Ny && isDisplayingAreas; j++)
 	{
 		glBegin(GL_LINE_STRIP);
-		for (i = 0; i < Nx; i++)
+		for (int i = 0; i < Nx; i++)
 		{
 			glVertex2f((E_x + lines[i][j].x) * tempX, (E_y + lines[i][j].y) * tempY);
 		}
@@ -748,7 +744,7 @@ void Display(void) // функци€ вывода
 
 	//нумераци€ функций
 	glColor3ub(0, 0, 0);
-	for (i = 0; i < xy.size() && isDisplayingFunctions; i++)
+	for (int i = 0; i < xy.size() && isDisplayingFunctions; i++)
 	{
 					char*text = new char[3];
 					//sprintf_s(text, 2, "%d", i);
